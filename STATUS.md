@@ -20,6 +20,36 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## University Planet redesign (Sept 27, 2026)
+
+References studied: **weevolveit.com** (dotted 3D globe on a starfield, orbital arcs,
+huge bold type, floating pill nav) and **ihubadmissions.org** (same Bishkek/+996 market —
+lead-capture and WhatsApp CTA patterns). Our lime terminal identity is kept intact.
+
+- **`src/data/geo.ts`** — country centroids for all 106 countries in the QS list, plus
+  `globePoints()`: all 1,504 universities projected at their country centroid, spread by a
+  deterministic hash with a radius scaled to that country's institution count (184 US → wide,
+  1 Luxembourg → tight), longitude corrected for latitude. So density on the globe is honest.
+- **`src/components/globe/university-globe.tsx`** — hand-rolled canvas planet (no 3D dependency):
+  lit green sphere + lime rim + atmosphere bloom, dot graticule, country density halos, every
+  university as a rank-sized dot (top-50 get a glow), two cyan orbital ellipses, drag-to-spin with
+  axial tilt, hover picking with an in-place tooltip, click to select. DPR-aware, ResizeObserver,
+  reduced-motion → static frame.
+- **`src/components/globe/starfield.tsx`** — deterministic SVG stars with a slow twinkle.
+- **New hero** — readout bar (1,506 universities / 13 countries / 11 exams decoded / drag the
+  planet), the planet, giant type ("Every university on Earth. One decision."), CTAs, scroll cue.
+- **Robustness fix (important):** entrance animation is now **CSS-driven**
+  (`IntersectionObserver` toggles `.reveal-in`, compositor runs the transition) with a 1.2s safety
+  timeout, replacing the rAF-gated motion `whileInView`. Root cause found during verification: a
+  throttled/dead animation-frame loop left motion content permanently at `opacity: 0`. Content
+  visibility must never depend on a JS frame loop. `@/components/motion/reveal` is now a re-export
+  of the CSS implementation, so both import paths behave identically. The hero globe and headline
+  are additionally ungated (no entrance animation at all).
+
+Verified: planet renders with clusters + orbital rings + atmosphere; hover tooltip returned
+"Pusan National University · QS #449 · South Korea"; globe rotates between captures; mobile 390px
+hero composition solid; design detector clean across all new files.
+
 ## Live (September 27, 2026)
 
 - **Motion round 2** — aurora scroll parallax (two blobs glide at different speeds via

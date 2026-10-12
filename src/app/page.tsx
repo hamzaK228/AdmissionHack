@@ -9,6 +9,8 @@ import { ExamMarquee } from "@/components/exam-marquee";
 import { WelcomeStrip } from "@/components/welcome-strip";
 import { SystemPath } from "@/components/motion/system-path";
 import { CountUp } from "@/components/motion/count-up";
+import { Starfield } from "@/components/globe/starfield";
+import { UniversityGlobe } from "@/components/globe/university-globe";
 
 const modules = [
   {
@@ -66,71 +68,95 @@ export default function HomePage() {
   return (
     <>
       <WelcomeStrip />
-      {/* ── Hero ── */}
-      <section className="relative">
-        <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-20 sm:px-6 sm:pb-28 sm:pt-28 lg:grid-cols-[1.1fr_1fr]">
+      {/* ── Hero: the university planet ── */}
+      <section className="relative overflow-hidden border-b border-line/70">
+        <Starfield className="opacity-70" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_55%_at_50%_38%,rgba(201,255,74,0.10),transparent_70%)]"
+        />
+
+        <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6 sm:pb-20">
+          {/* live readout above the planet — renders immediately, never gated on animation */}
           <div>
-            <Reveal>
-              <Eyebrow>the admission ecosystem · free · global</Eyebrow>
-            </Reveal>
-            <Reveal delay={90}>
-              <h1 className="mt-6 text-4xl font-bold leading-[1.12] tracking-tight sm:text-[52px]">
-                Admission is a system.
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.2em] text-dim">
+              <span className="flex items-center gap-2">
+                <span className="anim-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-lime" />
+                <span className="text-lime">{universities.length.toLocaleString()}</span> universities
+              </span>
+              <span className="text-line2">/</span>
+              <span>
+                <span className="text-lime">{countries.length}</span> countries
+              </span>
+              <span className="text-line2">/</span>
+              <span>
+                <span className="text-lime">{exams.length}</span> exams decoded
+              </span>
+              <span className="text-line2">/</span>
+              <span className="text-fog">drag the planet</span>
+            </div>
+          </div>
+
+          {/* the globe */}
+          <div>
+            <div className="relative mx-auto mt-4 h-[52vh] max-h-[620px] min-h-[340px] w-full sm:h-[60vh]">
+              <UniversityGlobe className="h-full w-full" />
+              {/* anchor labels like the reference */}
+              <div className="pointer-events-none absolute left-2 top-6 hidden sm:block">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-lime/80">
+                  ● 184 · united states
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-dim">qs 2027 edition</p>
+              </div>
+              <div className="pointer-events-none absolute bottom-8 right-2 hidden text-right sm:block">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-mint/80">
+                  1.35°n 103.8°e · singapore
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-dim">asia · 4</p>
+              </div>
+            </div>
+          </div>
+
+          {/* headline — CSS-driven entrance: renders even if rAF is throttled */}
+          <div className="relative mx-auto mt-2 max-w-4xl text-center">
+            <div className="animate-step" style={{ animationDelay: "120ms" }}>
+              <h1 className="text-[38px] font-bold leading-[1.04] tracking-tight sm:text-[68px]">
+                Every university on Earth.
                 <br />
-                <span className="headline-gradient">Every system has a hack.</span>
-                <br />
-                Find yours.
+                <span className="headline-gradient">One decision.</span>
               </h1>
-            </Reveal>
-            <Reveal delay={180}>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-fog">
-                Deadlines scattered across 50 tabs. Documents prepared 8 times. Contradictory
-                advice everywhere. AdmissionHack compiles the whole process — how it works, which
-                universities fit, which exams you need — into one clear sequence.
+            </div>
+            <div className="animate-step" style={{ animationDelay: "220ms" }}>
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-fog">
+                {universities.length.toLocaleString()} institutions across {countries.length}{" "}
+                countries, ranked with QS 2027 and ARWU 2025 — mapped, matched to your scores and
+                budget, and tracked to the deadline.
               </p>
-            </Reveal>
-            <Reveal delay={260}>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            </div>
+            <div className="animate-step" style={{ animationDelay: "320ms" }}>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link
-                  href="/how-admission-works"
-                  className="anim-glow rounded-xl bg-lime px-6 py-3.5 text-center text-sm font-bold text-ink transition-transform hover:scale-[1.03] active:scale-95"
+                  href="/dashboard"
+                  className="anim-glow w-full rounded-xl bg-lime px-7 py-3.5 text-center text-sm font-bold text-ink transition-transform hover:scale-[1.03] active:scale-95 sm:w-auto"
                 >
-                  Decode the process →
+                  Find my universities →
                 </Link>
                 <Link
                   href="/universities"
-                  className="rounded-xl border border-line2 bg-panel/60 px-6 py-3.5 text-center text-sm font-bold text-paper transition-colors hover:border-lime/50 hover:text-lime"
+                  className="w-full rounded-xl border border-line2 bg-panel/60 px-7 py-3.5 text-center text-sm font-bold text-paper transition-colors hover:border-lime/50 hover:text-lime sm:w-auto"
                 >
-                  Browse {universities.length} universities
+                  Explore the directory
                 </Link>
               </div>
-            </Reveal>
-            <Reveal delay={340}>
-              <dl className="mt-12 grid grid-cols-2 gap-6 sm:grid-cols-4">
-                {[
-                  { v: universities.length, l: "universities" },
-                  { v: countries.length, l: "countries" },
-                  { v: exams.length, l: "exams decoded" },
-                  { v: 8, l: "journey steps" },
-                ].map((s) => (
-                  <div key={s.l}>
-                    <dd className="text-2xl font-bold text-lime">{s.v}</dd>
-                    <dt className="mt-1 text-[11px] uppercase tracking-wider text-dim">{s.l}</dt>
-                  </div>
-                ))}
-              </dl>
-            </Reveal>
+            </div>
           </div>
+        </div>
 
-          <Reveal delay={200} className="relative hidden lg:block">
-            <div className="anim-float absolute -left-8 top-8 z-10 rounded-xl border border-line2 bg-panel px-4 py-2.5 text-xs font-bold text-lime shadow-lg">
-              🎓 IELTS 7.5 — secured
-            </div>
-            <div className="anim-float-slow absolute -right-4 top-1/2 z-10 rounded-xl border border-line2 bg-panel px-4 py-2.5 text-xs font-bold text-mint shadow-lg">
-              ⚡ deadlines tracked: 8
-            </div>
-            <TerminalHero />
-          </Reveal>
+        {/* scroll cue with progress */}
+        <div className="relative mx-auto flex max-w-6xl items-center gap-3 px-4 pb-6 text-[10px] uppercase tracking-[0.24em] text-dim sm:px-6">
+          <span className="text-lime">scroll</span>
+          <span className="h-px flex-1 bg-gradient-to-r from-lime/60 to-transparent" />
+          <span className="text-fog">{journeySteps.length} steps ahead</span>
         </div>
       </section>
 
@@ -147,7 +173,7 @@ export default function HomePage() {
         </Reveal>
         <ol className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {journeySteps.map((step, i) => (
-            <Reveal key={step.slug} delay={i * 70}>
+            <Reveal key={step.slug} delay={i * 45}>
               <li>
                 <Link
                   href={`/how-admission-works/${step.slug}`}
@@ -184,7 +210,7 @@ export default function HomePage() {
           </Reveal>
           <div className="mt-12 grid gap-4 sm:grid-cols-2">
             {modules.map((m, i) => (
-              <Reveal key={m.href} delay={i * 80}>
+              <Reveal key={m.href} delay={i * 50}>
                 <CtaCard href={m.href} title={`$ ${m.cmd} — ${m.title}`} description={m.description} cta="open" />
               </Reveal>
             ))}
@@ -199,7 +225,7 @@ export default function HomePage() {
         </Reveal>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {upcoming.map((item, i) => (
-            <Reveal key={item.title} delay={i * 70}>
+            <Reveal key={item.title} delay={i * 45}>
               <div className="group h-full rounded-xl border border-dashed border-line2 bg-panel/40 p-5 transition-colors hover:border-lime/40">
                 <p className="text-sm font-bold text-paper">$ {item.title}</p>
                 <p className="mt-2 text-xs leading-relaxed text-dim">{item.desc}</p>
