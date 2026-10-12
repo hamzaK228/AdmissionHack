@@ -35,6 +35,7 @@ const columns = [
 export function SiteFooter() {
   return (
     <footer className="mt-20 border-t border-line bg-panel/60">
+      <div className="scroll-rule" aria-hidden />
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr]">
           <div>

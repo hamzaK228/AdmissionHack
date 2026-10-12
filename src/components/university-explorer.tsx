@@ -9,6 +9,7 @@ import { FIELDS } from "@/data/types";
 import { countryByCode } from "@/data/countries";
 import { Badge } from "@/components/ui";
 import { SaveButton } from "@/components/save-button";
+import { Reveal } from "@/components/reveal";
 import { useStore } from "@/components/dashboard/store";
 
 const PAGE = 60;
@@ -90,6 +91,7 @@ export function UniversityExplorer({
 
   return (
     <div>
+      <Reveal>
       <div className="grid gap-3 rounded-2xl border border-line bg-panel/70 p-4 sm:grid-cols-2 lg:grid-cols-3">
         <input
           type="search"
@@ -133,6 +135,8 @@ export function UniversityExplorer({
           <option value="tuition-desc">sort: tuition ↓</option>
         </select>
       </div>
+
+      </Reveal>
 
       <p className="mt-5 text-xs uppercase tracking-widest text-dim">
         <span className="text-lime">{String(Math.min(limit, filtered.length)).padStart(2, "0")}</span> /{" "}

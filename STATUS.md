@@ -42,6 +42,21 @@ Plus a fixed right-edge **scroll percentage readout** with a progress line, matc
 the reference's indicator. Measured live: y=380 → planet opacity 0.67 / scale 0.92 /
 +61px, stars +129px. `prefers-reduced-motion` neutralises all of it.
 
+### Scroll motion is site-wide (fix, Sept 27)
+
+Reported as "no change" — diagnosis found the real cause: the scroll choreography
+existed **only on the home hero**, so scrolling any inner page moved nothing
+(`animatedElements: 0` on `/universities`). Extended so every page animates:
+
+- **`PageHero`** (shared by universities, exams, countries, scholarships,
+  how-admission-works) now wears `.hero-copy` — drifts up and fades on scroll —
+  and carries a `.scroll-rule` that fills with document progress.
+- **Directory** filter panel reveals on scroll; cards keep their layout animation.
+- **Site footer** gained a `.scroll-rule` reading-progress divider.
+
+Measured on `/universities`: at y=500 → hero `opacity .64`, `translateY(-35px)`,
+rule `scaleX .093`.
+
 ## University Planet redesign (Sept 27, 2026)
 
 References studied: **weevolveit.com** (dotted 3D globe on a starfield, orbital arcs,

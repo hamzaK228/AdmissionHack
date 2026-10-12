@@ -22,8 +22,9 @@ export function PageHero({
   children?: ReactNode;
 }) {
   return (
-    <section className="relative border-b border-line/70">
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+    <section className="relative overflow-hidden border-b border-line/70">
+      {/* scroll-linked: drifts and fades as you leave the hero */}
+      <div className="hero-copy relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
         <Eyebrow>{eyebrow}</Eyebrow>
         <h1 className="headline-gradient mt-5 max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
           {title}
@@ -31,6 +32,8 @@ export function PageHero({
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-fog">{description}</p>
         {children}
       </div>
+      {/* reading-progress rule tied to document scroll */}
+      <div className="scroll-rule absolute inset-x-0 bottom-0" aria-hidden />
     </section>
   );
 }
