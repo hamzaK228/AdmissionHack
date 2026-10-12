@@ -295,6 +295,106 @@ body {
   background: var(--color-lime);
 }
 
+
+/* ── Horizontal phase filmstrip ──────────────────────────────────────
+   The section pins for N viewport-heights; vertical scroll translates the
+   track sideways via --jp (0..1) written by a passive scroll listener, so
+   the motion resolves in the style engine. Below lg it collapses to a
+   normal vertical stack.
+   ------------------------------------------------------------------ */
+.journey-pin {
+  height: calc(100vh + var(--journey-shift, 0px) * 0.5);
+}
+.journey-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.journey-track {
+  display: flex;
+  height: 100%;
+  width: max-content;
+  transform: translate3d(calc(var(--jp, 0) * -1 * var(--journey-shift, 0px)), 0, 0);
+}
+.journey-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  flex: 0 0 100vw;
+  overflow: hidden;
+  /* off-screen phases are not rendered at all — keeps an 8-panel
+     horizontal track cheap regardless of viewport width */
+  content-visibility: auto;
+  contain-intrinsic-size: 100vw 100vh;
+}
+/* the ghost numeral sits behind each phase and travels with it */
+.journey-panel .ghost-number {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 34vw;
+}
+.journey-panel[aria-current="true"] .ghost-number {
+  opacity: 0.075;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-pin {
+    height: auto;
+  }
+  .journey-sticky {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+  .journey-track {
+    display: block;
+    width: auto;
+    transform: none;
+  }
+  .journey-panel {
+    width: auto;
+    height: auto;
+    padding: 6rem 0;
+  }
+  .journey-panel .ghost-number {
+    font-size: 26vw;
+  }
+}
+
+/* mobile: vertical stack, no pinning */
+@media (max-width: 1023px) {
+  .journey-pin {
+    height: auto;
+  }
+  .journey-sticky {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+  .journey-track {
+    display: block;
+    width: auto;
+    transform: none;
+  }
+  .journey-panel {
+    width: auto;
+    height: auto;
+    flex: none;
+    padding: 5rem 0;
+  }
+  .journey-panel .ghost-number {
+    font-size: 40vw;
+    left: auto;
+    right: -4vw;
+    transform: translateY(-50%);
+  }
+}
+
 /* ── Scroll choreography ─────────────────────────────────────────────
    Driven by CSS variables published by <ScrollDriver> from a passive
    scroll listener (no animation-frame loop, so it survives throttling).

@@ -20,6 +20,29 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Horizontal filmstrip — the reference's signature motion (Sept 27, 2026)
+
+The user supplied a **screencast** of weevolveit.com. Video input is not available to the
+model, so I extracted frames with ffmpeg and tiled them into contact sheets, then pulled
+three frames around the phase transitions at higher resolution. That settled it: the phases
+do not stack vertically, they **translate sideways**.
+
+Evidence from the frames: `The 5 method.` centred -> `...over.` (Discover) sliding off the
+LEFT while `Diagnos` enters from the RIGHT with ghost `1` and `2` translating behind it ->
+`Design.` arrived left with ghost `3`, `Del` (Deliver) entering right.
+
+- **`JourneyScroller` is now a pinned horizontal filmstrip.** The section is
+  `100vh + (N-1)*100vw*0.5` tall; a sticky 100vh viewport holds an N-panel flex track that
+  translates on `--jp` (0..1, written by a passive scroll listener -> CSS, no rAF loop).
+  Verified: `jp 0 -> .35 -> .85` produced `translateX 0 -> -3562px -> -8602px`.
+- **Performance was a real problem** and needed fixing: an 11,520px-wide track with
+  `will-change: transform` promoted an enormous compositor layer and screenshots began
+  timing out. Removed the `will-change` and added `content-visibility: auto` +
+  `contain-intrinsic-size` to each phase so off-screen panels are not rendered at all.
+- Pin length halved (0.85 -> 0.5 x shift) — 8 phases should not cost ten viewport-heights.
+- Degrades honestly: below `lg` it is a normal vertical stack, and
+  `prefers-reduced-motion` unpins it entirely.
+
 ## Stepped scroll narrative — "must look like weevolveit when I scroll" (Sept 27, 2026)
 
 Scrolled the reference end to end and found the real structure: it is not a hero, it is a
