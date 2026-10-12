@@ -70,10 +70,10 @@ export default function HomePage() {
       <WelcomeStrip />
       {/* ── Hero: the university planet ── */}
       <section className="relative overflow-hidden border-b border-line/70">
-        <Starfield className="opacity-70" />
+        <div className="hero-stars"><Starfield className="opacity-70" /></div>
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_55%_at_50%_38%,rgba(201,255,74,0.10),transparent_70%)]"
+          className="hero-aura pointer-events-none absolute inset-0 bg-[radial-gradient(70%_55%_at_50%_38%,rgba(201,255,74,0.10),transparent_70%)]"
         />
 
         <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6 sm:pb-20">
@@ -99,7 +99,7 @@ export default function HomePage() {
 
           {/* the globe */}
           <div>
-            <div className="relative mx-auto mt-4 h-[52vh] max-h-[620px] min-h-[340px] w-full sm:h-[60vh]">
+            <div className="hero-planet relative mx-auto mt-4 h-[52vh] max-h-[620px] min-h-[340px] w-full sm:h-[60vh]">
               <UniversityGlobe className="h-full w-full" />
               {/* anchor labels like the reference */}
               <div className="pointer-events-none absolute left-2 top-6 hidden sm:block">
@@ -118,7 +118,7 @@ export default function HomePage() {
           </div>
 
           {/* headline — CSS-driven entrance: renders even if rAF is throttled */}
-          <div className="relative mx-auto mt-2 max-w-4xl text-center">
+          <div className="hero-copy relative mx-auto mt-2 max-w-4xl text-center">
             <div className="animate-step" style={{ animationDelay: "120ms" }}>
               <h1 className="text-[38px] font-bold leading-[1.04] tracking-tight sm:text-[68px]">
                 Every university on Earth.
@@ -162,6 +162,7 @@ export default function HomePage() {
 
       <ExamMarquee />
 
+      <div className="scroll-rule" aria-hidden />
       {/* ── Journey ── */}
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <Reveal>

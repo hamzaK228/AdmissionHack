@@ -20,6 +20,28 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Scroll choreography (Sept 27, 2026) — "motion on scroll like weevolveit"
+
+`src/components/motion/scroll-driver.tsx` publishes scroll state as CSS custom
+properties on `<html>` from a **passive scroll listener** (never an animation-frame
+loop, which is what left content stuck before):
+
+- `--sy` scrollY in px · `--sp` document progress 0..1 · `--sv` decaying velocity
+
+CSS then resolves the choreography in the style engine:
+
+| element | behaviour on scroll |
+|---|---|
+| `.hero-planet` | scales 1 → 0.62, drifts down 16%, dissolves by ~1150px |
+| `.hero-stars` | parallaxes at 0.34× (deepest layer moves least) |
+| `.hero-copy` | drifts up against the planet, fades later |
+| `.hero-aura` | swells with scroll velocity (momentum feedback) |
+| `.scroll-rule` | section rule fills with `--sp` (reading progress) |
+
+Plus a fixed right-edge **scroll percentage readout** with a progress line, matching
+the reference's indicator. Measured live: y=380 → planet opacity 0.67 / scale 0.92 /
++61px, stars +129px. `prefers-reduced-motion` neutralises all of it.
+
 ## University Planet redesign (Sept 27, 2026)
 
 References studied: **weevolveit.com** (dotted 3D globe on a starfield, orbital arcs,
