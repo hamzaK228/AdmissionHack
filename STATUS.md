@@ -20,6 +20,32 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Matching weevolveit.com (Sept 27, 2026)
+
+User asked for our site to match https://weevolveit.com/ exactly. Studied the full page
+(doc height 9554px): fixed floating pill nav · pointillist globe whose dots form real
+continents · giant display type beneath · fixed edge furniture (flag left, award badge
+bottom-left, scroll % right) · then a hard cut to a LIGHT section (`[ THE FRAMEWORK ]`).
+
+Shipped:
+
+- **Real continents on the globe.** Fetched Natural Earth 110m land polygons (public domain),
+  rasterised them to a bit-packed 500x250 equirectangular mask (33.2% land, 20KB base64) in
+  `src/data/land-mask.ts`, and rewrote the globe to draw ~41k land dots as one batched `Path2D`
+  (front hemisphere only, size varying with depth). Universities stay lime on top. Tonal balance
+  tuned to match: near-uniform dark sphere (no gradient hotspot), crisp pale dots, subtle rim,
+  calmer atmosphere.
+- **Floating pill nav.** Replaced the full-width sticky bar with an inset, rounded-full,
+  bordered pill that condenses on scroll (`bg-ink/70` -> `bg-ink/90` + shadow), holding the
+  brand, centred links, search, dashboard and the lime CTA. Mobile sheet floats too.
+- **Cleaner hero.** Removed the welcome strip (it duplicated the dashboard link and pushed the
+  planet down); personalisation now lives inline in the hero readout via `WelcomeLine`.
+- Coordinate + country marker labels beside the planet, echoing their `ONLINE · BISHKEK` motif.
+
+Still unmatched from the reference (candidates for a next pass): the light/dark section
+alternation with `[ BRACKETED ]` eyebrows, the bottom-left award badge, and the left-edge
+language switcher.
+
 ## Emil Kowalski craft pass (Sept 27, 2026)
 
 Applied `emil-design-eng` philosophy across the codebase. Audit findings and fixes:

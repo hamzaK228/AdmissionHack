@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { globePoints, countryStats, type GlobePoint } from "@/data/geo";
+import { LAND_W, LAND_H, landMask } from "@/data/land-mask";
 
 interface Props {
-  /** called when a university dot is clicked */
   onSelect?: (p: GlobePoint) => void;
-  /** start rotation, radians */
   initialRotation?: number;
   className?: string;
 }
@@ -15,9 +14,9 @@ interface Props {
 const DEG = Math.PI / 180;
 
 /**
- * The university planet: every QS-ranked institution plotted on a rotating
- * dotted sphere. Hand-rolled canvas — orthographic projection, density halos,
- * orbital rings, drag to spin, hover to identify.
+ * Pointillist planet — continents drawn from a published land mask (Natural
+ * Earth 110m), with every QS-ranked university layered on top in our lime.
+ * Hand-rolled canvas: orthographic projection, no 3D dependency.
  */
 export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = "" }: Props) {
   const reduce = useReducedMotion();
@@ -26,41 +25,43 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
 
   const points = useMemo(() => globePoints(), []);
   const countries = useMemo(() => countryStats(), []);
-  const maxCount = useMemo(
-    () => Math.max(...countries.map((c) => c.count), 1),
-    [countries],
-  );
+  const maxCount = useMemo(() => Math.max(...countries.map((c) => c.count), 1), [countries]);
 
-  const rotRef = useRef(initialRotation); // radians, longitude
-  const tiltRef = useRef(-0.32); // fixed axial tilt
-  const dragRef = useRef<{ active: boolean; lastX: number; lastY: number; moved: boolean }>({
-    active: false,
-    lastX: 0,
-    lastY: 0,
-    moved: false,
-  });
+  // land dots as earth-space unit vectors — computed once, rotated per frame
+  const landVectors = useMemo(() => {
+    const mask = landMask();
+    const vecs: number[] = [];
+    for (let i = 0; i < LAND_W * LAND_H; i++) {
+      if (!mask[i]) continue;
+      const gx = i % LAND_W;
+      const gy = (i - gx) / LAND_W;
+      const lat = (90 - ((gy + 0.5) * 180) / LAND_H) * DEG;
+      const lng = (-180 + ((gx + 0.5) * 360) / LAND_W) * DEG;
+      const cl = Math.cos(lat);
+      vecs.push(cl * Math.cos(lng), Math.sin(lat), cl * Math.sin(lng));
+    }
+    return new Float32Array(vecs);
+  }, []);
+
+  const rotRef = useRef(initialRotation);
+  const tiltRef = useRef(-0.3);
+  const dragRef = useRef({ active: false, lastX: 0, lastY: 0, moved: false });
   const hoverRef = useRef<GlobePoint | null>(null);
-  const spinRef = useRef(0); // 0..1 pause factor when hovering
-
+  const spinRef = useRef(0);
   const [hoverLabel, setHoverLabel] = useState<{ x: number; y: number; p: GlobePoint } | null>(null);
 
-  /** project lat/lng → screen, returns null if behind the globe */
-  const project = useCallback(
-    (lat: number, lng: number, cx: number, cy: number, R: number) => {
-      const la = lat * DEG;
-      const lo = lng * DEG + rotRef.current;
-      const x = Math.cos(la) * Math.cos(lo);
-      const y = Math.sin(la);
-      const z = Math.cos(la) * Math.sin(lo);
-      const t = tiltRef.current;
-      // tilt around X axis
-      const y2 = y * Math.cos(t) - z * Math.sin(t);
-      const z2 = y * Math.sin(t) + z * Math.cos(t);
-      if (z2 <= 0.02) return null; // back hemisphere
-      return { x: cx + x * R, y: cy - y2 * R, depth: z2 };
-    },
-    [],
-  );
+  const project = useCallback((lat: number, lng: number, cx: number, cy: number, R: number) => {
+    const la = lat * DEG;
+    const lo = lng * DEG + rotRef.current;
+    const x = Math.cos(la) * Math.cos(lo);
+    const y = Math.sin(la);
+    const z = Math.cos(la) * Math.sin(lo);
+    const t = tiltRef.current;
+    const y2 = y * Math.cos(t) - z * Math.sin(t);
+    const z2 = y * Math.sin(t) + z * Math.cos(t);
+    if (z2 <= 0.02) return null;
+    return { x: cx + x * R, y: cy - y2 * R, depth: z2 };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -79,8 +80,8 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       size = { w: rect.width, h: rect.height };
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      canvas.style.width = rect.width + "px";
+      canvas.style.height = rect.height + "px";
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -94,93 +95,96 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
 
       const cx = w / 2;
       const cy = h / 2;
-      const R = Math.min(w * 0.42, h * 0.44);
+      const R = Math.min(w * 0.4, h * 0.44);
 
-      // ── outer atmosphere: soft lime bloom behind the sphere
-      const atmo = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.24);
-      atmo.addColorStop(0, "rgba(201,255,74,0.20)");
-      atmo.addColorStop(0.5, "rgba(94,234,212,0.07)");
-      atmo.addColorStop(1, "rgba(201,255,74,0)");
-      ctx.beginPath();
-      ctx.arc(cx, cy, R * 1.24, 0, Math.PI * 2);
-      ctx.fillStyle = atmo;
-      ctx.fill();
+      const cosR = Math.cos(rotRef.current);
+      const sinR = Math.sin(rotRef.current);
+      const cosT = Math.cos(tiltRef.current);
+      const sinT = Math.sin(tiltRef.current);
 
-      // ── sphere body: lit sphere, green-tinted
-      const g = ctx.createRadialGradient(cx - R * 0.38, cy - R * 0.42, R * 0.05, cx, cy, R * 1.02);
-      g.addColorStop(0, "rgba(74,110,58,0.95)");
-      g.addColorStop(0.32, "rgba(38,62,30,0.96)");
-      g.addColorStop(0.7, "rgba(16,30,14,0.97)");
-      g.addColorStop(1, "rgba(6,12,6,0.98)");
+      // sphere body — a planet at night
+      const g = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.34, R * 0.1, cx, cy, R);
+      g.addColorStop(0, "rgba(11,15,13,0.96)");
+      g.addColorStop(0.7, "rgba(6,9,8,0.97)");
+      g.addColorStop(1, "rgba(2,4,3,0.98)");
       ctx.beginPath();
       ctx.arc(cx, cy, R, 0, Math.PI * 2);
       ctx.fillStyle = g;
       ctx.fill();
 
-      // ── rim light: the planet's edge
+      // rim + atmosphere
       ctx.beginPath();
       ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(201,255,74,0.85)";
-      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = "rgba(201,255,74,0.34)";
+      ctx.lineWidth = 1.4;
       ctx.stroke();
+      const atmo = ctx.createRadialGradient(cx, cy, R * 0.94, cx, cy, R * 1.22);
+      atmo.addColorStop(0, "rgba(201,255,74,0.055)");
+      atmo.addColorStop(0.55, "rgba(94,234,212,0.03)");
+      atmo.addColorStop(1, "rgba(201,255,74,0)");
       ctx.beginPath();
-      ctx.arc(cx, cy, R + 3.5, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(201,255,74,0.22)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.arc(cx, cy, R * 1.22, 0, Math.PI * 2);
+      ctx.fillStyle = atmo;
+      ctx.fill();
 
-      // ── graticule: faint lat/long dots give the sphere its body
-      ctx.fillStyle = "rgba(201,255,74,0.30)";
-      for (let lat = -80; lat <= 80; lat += 8) {
-        const step = 8 / Math.max(0.25, Math.cos(lat * DEG));
-        for (let lng = -180; lng < 180; lng += step) {
-          const p = project(lat, lng, cx, cy, R);
-          if (!p) continue;
-          const s = 1.0 + p.depth * 0.8;
-          ctx.fillRect(p.x, p.y, s, s);
-        }
+      // CONTINENTS — one batched path of small dots, front hemisphere only
+      const landPath = new Path2D();
+      const lv = landVectors;
+      for (let i = 0; i < lv.length; i += 3) {
+        const vx = lv[i];
+        const vy = lv[i + 1];
+        const vz = lv[i + 2];
+        const x1 = vx * cosR - vz * sinR;
+        const z1 = vx * sinR + vz * cosR;
+        const y2 = vy * cosT - z1 * sinT;
+        const z2 = vy * sinT + z1 * cosT;
+        if (z2 <= 0.03) continue;
+        const s = 0.5 + z2 * 0.62;
+        landPath.rect(cx + x1 * R, cy - y2 * R, s, s);
       }
+      ctx.fillStyle = "rgba(238,246,236,0.88)";
+      ctx.fill(landPath);
 
-      // ── country density halos: where higher education concentrates
+      // density glow where higher education concentrates
       for (const c of countries) {
         const p = project(c.coords![0], c.coords![1], cx, cy, R);
         if (!p) continue;
         const weight = c.count / maxCount;
-        const rad = (R * 0.06) + weight * R * 0.34;
+        const rad = R * 0.05 + weight * R * 0.3;
         const hg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
-        hg.addColorStop(0, `rgba(94,234,212,${0.2 + weight * 0.26})`);
-        hg.addColorStop(1, "rgba(94,234,212,0)");
+        hg.addColorStop(0, "rgba(201,255,74," + (0.1 + weight * 0.16) + ")");
+        hg.addColorStop(1, "rgba(201,255,74,0)");
         ctx.beginPath();
         ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
         ctx.fillStyle = hg;
         ctx.fill();
       }
 
-      // ── universities: every institution as a lime dot, size by QS rank
+      // universities on top, in lime
       for (const pt of points) {
         const p = project(pt.lat, pt.lng, cx, cy, R);
         if (!p) continue;
-        const rankBoost = pt.rank <= 50 ? 1.5 : pt.rank <= 200 ? 1.1 : 0.85;
-        const s = (1.7 + p.depth * 1.9) * rankBoost;
-        const alpha = 0.6 + p.depth * 0.4;
+        const boost = pt.rank <= 50 ? 1.5 : pt.rank <= 200 ? 1.1 : 0.85;
+        const s = (1.3 + p.depth * 1.5) * boost;
+        const alpha = 0.55 + p.depth * 0.45;
         if (pt.rank <= 50) {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, s * 2.6, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(201,255,74,${alpha * 0.3})`;
+          ctx.arc(p.x, p.y, s * 2.4, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(201,255,74," + alpha * 0.22 + ")";
           ctx.fill();
         }
         ctx.beginPath();
-        ctx.arc(p.x, p.y, s * 0.62, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
         ctx.fillStyle =
           pt.rank <= 50
-            ? `rgba(201,255,74,${alpha})`
+            ? "rgba(201,255,74," + alpha + ")"
             : pt.rank <= 200
-              ? `rgba(214,255,140,${alpha})`
-              : `rgba(180,225,150,${alpha * 0.9})`;
+              ? "rgba(214,255,140," + alpha + ")"
+              : "rgba(180,225,150," + alpha * 0.9 + ")";
         ctx.fill();
       }
 
-      // ── hovered point: ring + crosshair
+      // hovered university
       const hv = hoverRef.current;
       if (hv) {
         const p = project(hv.lat, hv.lng, cx, cy, R);
@@ -191,24 +195,23 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
           ctx.lineWidth = 1.4;
           ctx.stroke();
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
           ctx.fillStyle = "#c9ff4a";
           ctx.fill();
         }
       }
 
-      // ── orbital rings: tilted ellipses reading as orbit paths
+      // orbital rings
       ctx.save();
       ctx.translate(cx, cy);
-      const orbits = [
-        { rx: R * 1.26, ry: R * 0.32, rot: -0.42, alpha: 0.45 },
-        { rx: R * 1.44, ry: R * 0.2, rot: 0.34, alpha: 0.28 },
-      ];
-      for (const o of orbits) {
+      for (const o of [
+        { rx: R * 1.24, ry: R * 0.3, rot: -0.42, alpha: 0.4 },
+        { rx: R * 1.42, ry: R * 0.19, rot: 0.34, alpha: 0.24 },
+      ]) {
         ctx.rotate(o.rot);
         ctx.beginPath();
         ctx.ellipse(0, 0, o.rx, o.ry, 0, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(125,211,252,${o.alpha})`;
+        ctx.strokeStyle = "rgba(125,211,252," + o.alpha + ")";
         ctx.lineWidth = 1;
         ctx.stroke();
         ctx.rotate(-o.rot);
@@ -217,20 +220,13 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
     };
 
     const loop = () => {
-      if (!dragRef.current.active) {
-        const pause = spinRef.current;
-        rotRef.current += 0.0022 * (1 - pause * 0.85);
-      }
+      if (!dragRef.current.active) rotRef.current += 0.0021 * (1 - spinRef.current * 0.85);
       draw();
       raf = requestAnimationFrame(loop);
     };
 
-    if (reduce) {
-      draw(); // static frame for reduced-motion
-    } else {
-      raf = requestAnimationFrame(loop);
-    }
-    // second draw catches late layout
+    if (reduce) draw();
+    else raf = requestAnimationFrame(loop);
     const t = setTimeout(draw, 120);
 
     return () => {
@@ -238,9 +234,8 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       clearTimeout(t);
       ro.disconnect();
     };
-  }, [points, countries, maxCount, project, reduce]);
+  }, [points, countries, maxCount, project, reduce, landVectors]);
 
-  /* ── interaction ───────────────────────────────────────── */
   const pick = useCallback(
     (clientX: number, clientY: number) => {
       const wrap = wrapRef.current;
@@ -250,10 +245,9 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       const y = clientY - rect.top;
       const cx = rect.width / 2;
       const cy = rect.height / 2;
-      const R = Math.min(rect.width, rect.height) * 0.36;
-
+      const R = Math.min(rect.width * 0.4, rect.height * 0.44);
       let best: GlobePoint | null = null;
-      let bestD = 16; // px pick radius
+      let bestD = 16;
       for (const pt of points) {
         const p = project(pt.lat, pt.lng, cx, cy, R);
         if (!p) continue;
@@ -268,62 +262,53 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
     [points, project],
   );
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    dragRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, moved: false };
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = dragRef.current;
-    if (d.active) {
-      const dx = e.clientX - d.lastX;
-      const dy = e.clientY - d.lastY;
-      if (Math.abs(dx) + Math.abs(dy) > 2) d.moved = true;
-      rotRef.current += dx * 0.006;
-      tiltRef.current = Math.max(-0.9, Math.min(0.9, tiltRef.current + dy * 0.005));
-      d.lastX = e.clientX;
-      d.lastY = e.clientY;
-      spinRef.current = 1;
-      return;
-    }
-    const hit = pick(e.clientX, e.clientY);
-    hoverRef.current = hit;
-    spinRef.current = hit ? 1 : 0;
-    if (hit) {
-      const wrap = wrapRef.current!;
-      const rect = wrap.getBoundingClientRect();
-      setHoverLabel({ x: e.clientX - rect.left, y: e.clientY - rect.top, p: hit });
-    } else {
-      setHoverLabel(null);
-    }
-  };
-
-  const onPointerUp = (e: React.PointerEvent) => {
-    const d = dragRef.current;
-    d.active = false;
-    spinRef.current = 0;
-    if (!d.moved) {
-      const hit = pick(e.clientX, e.clientY);
-      if (hit) onSelect?.(hit);
-    }
-  };
-
   return (
     <div
       ref={wrapRef}
-      className={`relative touch-none select-none ${className}`}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
+      className={"relative touch-none select-none " + className}
+      onPointerDown={(e) => {
+        dragRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, moved: false };
+        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        const d = dragRef.current;
+        if (d.active) {
+          const dx = e.clientX - d.lastX;
+          const dy = e.clientY - d.lastY;
+          if (Math.abs(dx) + Math.abs(dy) > 2) d.moved = true;
+          rotRef.current += dx * 0.006;
+          tiltRef.current = Math.max(-0.9, Math.min(0.9, tiltRef.current + dy * 0.005));
+          d.lastX = e.clientX;
+          d.lastY = e.clientY;
+          spinRef.current = 1;
+          return;
+        }
+        const hit = pick(e.clientX, e.clientY);
+        hoverRef.current = hit;
+        spinRef.current = hit ? 1 : 0;
+        if (hit) {
+          const rect = wrapRef.current!.getBoundingClientRect();
+          setHoverLabel({ x: e.clientX - rect.left, y: e.clientY - rect.top, p: hit });
+        } else setHoverLabel(null);
+      }}
+      onPointerUp={(e) => {
+        const d = dragRef.current;
+        d.active = false;
+        spinRef.current = 0;
+        if (!d.moved) {
+          const hit = pick(e.clientX, e.clientY);
+          if (hit) onSelect?.(hit);
+        }
+      }}
       onPointerLeave={() => {
         dragRef.current.active = false;
         hoverRef.current = null;
         spinRef.current = 0;
         setHoverLabel(null);
       }}
-      style={{ cursor: dragRef.current.active ? "grabbing" : "grab" }}
+      style={{ cursor: "grab" }}
       role="img"
-      aria-label={`Interactive globe plotting ${points.length} universities worldwide`}
+      aria-label={"Interactive globe plotting " + points.length + " universities worldwide"}
     >
       <canvas ref={canvasRef} className="block h-full w-full" />
       {hoverLabel && (

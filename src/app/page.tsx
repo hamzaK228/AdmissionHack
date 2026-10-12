@@ -6,10 +6,10 @@ import { CtaCard, SectionHeading, Eyebrow } from "@/components/ui";
 import { Reveal } from "@/components/reveal";
 import { TerminalHero } from "@/components/terminal-hero";
 import { ExamMarquee } from "@/components/exam-marquee";
-import { WelcomeStrip } from "@/components/welcome-strip";
 import { SystemPath } from "@/components/motion/system-path";
 import { CountUp } from "@/components/motion/count-up";
 import { Starfield } from "@/components/globe/starfield";
+import { WelcomeLine } from "@/components/welcome-line";
 import { UniversityGlobe } from "@/components/globe/university-globe";
 
 const modules = [
@@ -67,7 +67,6 @@ const upcoming = [
 export default function HomePage() {
   return (
     <>
-      <WelcomeStrip />
       {/* ── Hero: the university planet ── */}
       <section className="relative overflow-hidden border-b border-line/70">
         <div className="hero-stars"><Starfield className="opacity-70" /></div>
@@ -80,6 +79,7 @@ export default function HomePage() {
           {/* live readout above the planet — renders immediately, never gated on animation */}
           <div>
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.2em] text-dim">
+              <WelcomeLine />
               <span className="flex items-center gap-2">
                 <span className="anim-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-lime" />
                 <span className="text-lime">{universities.length.toLocaleString()}</span> universities
