@@ -72,7 +72,7 @@ export default async function UniversityPage({
               href={uni.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="anim-glow rounded-xl bg-lime px-5 py-2.5 text-sm font-bold text-ink transition-transform hover:scale-[1.03] active:scale-95"
+              className="anim-glow rounded-xl bg-lime px-5 py-2.5 text-sm font-bold text-ink press-grow"
             >
               official site ↗
             </a>
@@ -173,7 +173,7 @@ export default async function UniversityPage({
                         {exam ? (
                           <Link
                             href={`/exams/${exam.id}`}
-                            className="group flex items-center justify-between rounded-xl border border-line bg-panel/70 px-4 py-3.5 text-sm transition-all hover:border-lime/50"
+                            className="group flex items-center justify-between rounded-xl border border-line bg-panel/70 px-4 py-3.5 text-sm link-quiet"
                           >
                             <span className="font-bold text-paper transition-colors group-hover:text-lime">
                               {exam.name}

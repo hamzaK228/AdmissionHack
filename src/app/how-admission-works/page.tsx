@@ -25,7 +25,7 @@ export default function HowAdmissionWorksPage() {
               <li>
                 <Link
                   href={`/how-admission-works/${step.slug}`}
-                  className="group grid gap-4 rounded-2xl border border-line bg-panel/70 p-6 transition-all duration-300 hover:border-lime/50 hover:shadow-[0_10px_36px_rgba(201,255,74,0.06)] sm:grid-cols-[auto_1fr_auto] sm:items-center"
+                  className="group grid gap-4 rounded-2xl border border-line bg-panel/70 p-6 card-interactive sm:grid-cols-[auto_1fr_auto] sm:items-center"
                 >
                   <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-lime/30 bg-lime/10 text-sm font-bold text-lime">
                     {String(step.order).padStart(2, "0")}

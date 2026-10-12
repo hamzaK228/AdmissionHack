@@ -25,7 +25,7 @@ export function SaveButton({
         e.stopPropagation();
         toggleShortlist(slug);
       }}
-      className={`shrink-0 rounded-lg border font-bold transition-all active:scale-95 ${
+      className={`shrink-0 rounded-lg border font-bold transition-[color,border-color,background-color] active:scale-95 ${
         size === "md" ? "px-4 py-2.5 text-sm" : "px-2 py-1 text-[11px]"
       } ${
         saved

@@ -291,7 +291,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className={`fixed bottom-5 right-5 z-[90] rounded-xl border border-lime/40 bg-panel px-4 py-3 text-sm font-bold text-lime shadow-[0_10px_36px_rgba(0,0,0,0.6)] transition-all duration-300 ${
+        className={`fixed bottom-5 right-5 z-[90] rounded-xl border border-lime/40 bg-panel px-4 py-3 text-sm font-bold text-lime shadow-[0_10px_36px_rgba(0,0,0,0.6)] transition-[color,border-color,background-color] duration-300 ${
           toast ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"
         }`}
       >

@@ -104,7 +104,7 @@ export function CtaCard({
   return (
     <Link
       href={href}
-      className="group block rounded-2xl border border-line bg-panel/80 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-lime/50 hover:shadow-[0_12px_40px_rgba(201,255,74,0.08)]"
+      className="group block rounded-2xl border border-line bg-panel/80 p-6 card-interactive"
     >
       <h3 className="font-bold text-paper">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-fog">{description}</p>

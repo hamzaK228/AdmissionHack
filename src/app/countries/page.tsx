@@ -29,7 +29,7 @@ export default function CountriesPage() {
               <Reveal key={c.code} delay={i * 50}>
                 <Link
                   href={`/countries/${c.slug}`}
-                  className="group flex h-full flex-col rounded-2xl border border-line bg-panel/70 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-lime/50 hover:shadow-[0_12px_40px_rgba(201,255,74,0.07)]"
+                  className="group flex h-full flex-col rounded-2xl border border-line bg-panel/70 p-6 card-interactive"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-3xl" aria-hidden>

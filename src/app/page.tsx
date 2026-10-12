@@ -137,13 +137,13 @@ export default function HomePage() {
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link
                   href="/dashboard"
-                  className="anim-glow w-full rounded-xl bg-lime px-7 py-3.5 text-center text-sm font-bold text-ink transition-transform hover:scale-[1.03] active:scale-95 sm:w-auto"
+                  className="anim-glow w-full rounded-xl bg-lime px-7 py-3.5 text-center text-sm font-bold text-ink press-grow sm:w-auto"
                 >
                   Find my universities →
                 </Link>
                 <Link
                   href="/universities"
-                  className="w-full rounded-xl border border-line2 bg-panel/60 px-7 py-3.5 text-center text-sm font-bold text-paper transition-colors hover:border-lime/50 hover:text-lime sm:w-auto"
+                  className="w-full rounded-xl border border-line2 bg-panel/60 px-7 py-3.5 text-center text-sm font-bold text-paper link-quiet sm:w-auto"
                 >
                   Explore the directory
                 </Link>
@@ -178,7 +178,7 @@ export default function HomePage() {
               <li>
                 <Link
                   href={`/how-admission-works/${step.slug}`}
-                  className="group flex h-full flex-col rounded-xl border border-line bg-panel/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-lime/50"
+                  className="group flex h-full flex-col rounded-xl border border-line bg-panel/70 p-4 card-interactive"
                 >
                   <div className="flex items-center justify-between">
                     <span className="rounded-md border border-lime/30 bg-lime/10 px-2 py-0.5 text-[11px] font-bold text-lime">

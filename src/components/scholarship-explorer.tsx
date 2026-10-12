@@ -63,7 +63,7 @@ export function ScholarshipExplorer({ items }: { items: Scholarship[] }) {
             href={s.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex flex-col rounded-2xl border border-line bg-panel/70 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-lime/50 hover:shadow-[0_12px_40px_rgba(201,255,74,0.07)]"
+            className="group flex flex-col rounded-2xl border border-line bg-panel/70 p-5 card-interactive"
           >
             <div className="flex items-start justify-between gap-3">
               <div>

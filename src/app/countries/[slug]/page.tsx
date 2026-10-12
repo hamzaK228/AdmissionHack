@@ -128,7 +128,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               <Link
                 key={u.slug}
                 href={`/universities/${u.slug}`}
-                className="group flex items-center justify-between rounded-xl border border-line bg-panel/70 px-4 py-3.5 text-sm transition-all hover:border-lime/50"
+                className="group flex items-center justify-between rounded-xl border border-line bg-panel/70 px-4 py-3.5 text-sm link-quiet"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   {u.qsRank != null && (

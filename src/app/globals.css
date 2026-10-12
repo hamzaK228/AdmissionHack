@@ -48,6 +48,19 @@ body {
   overflow: hidden;
   pointer-events: none;
 }
+/* zero-JS parallax: the scroll driver's --sy moves the layers */
+.aurora-layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.aurora-layer-1 {
+  transform: translate3d(0, calc(var(--sy, 0px) * 0.08), 0);
+}
+.aurora-layer-2 {
+  transform: translate3d(0, calc(var(--sy, 0px) * -0.05), 0);
+}
+
 .aurora-blob {
   position: absolute;
   width: 60vw;
@@ -119,23 +132,98 @@ body {
   animation: stepin 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
+  /* Reduced motion means fewer and gentler animations — not zero.
+     Movement is removed; opacity/colour transitions stay because they aid
+     comprehension rather than causing motion sickness. */
   .animate-step,
   .anim-float,
   .anim-float-slow,
   .anim-glow,
   .anim-pulse-dot,
-  .reveal {
+  .card-interactive,
+  .link-quiet,
+  .press {
     animation: none !important;
-    transition: none !important;
-    opacity: 1 !important;
     transform: none !important;
   }
+  .card-interactive {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
   .reveal {
-    opacity: 1;
-    transform: none;
+    transform: none !important;
+    transition: opacity 200ms ease;
+  }
+  .hero-planet,
+  .hero-stars,
+  .hero-copy {
+    transform: none !important;
   }
 }
 
+
+/* ── Easing tokens (Emil Kowalski's curves) ──────────────────────────
+   Built-in CSS easings are too weak for UI. These have the punch that
+   makes an interaction feel intentional.
+   ------------------------------------------------------------------ */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ── Interactive surface ─────────────────────────────────────────────
+   Exact animated properties (never `all`), hover gated behind a real
+   pointer, and press feedback on every pressable card.
+   ------------------------------------------------------------------ */
+.card-interactive {
+  transition:
+    transform 200ms var(--ease-out),
+    border-color 200ms ease,
+    box-shadow 200ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-interactive:hover {
+    transform: translateY(-4px);
+    border-color: rgba(201, 255, 74, 0.5);
+    box-shadow: 0 12px 40px rgba(201, 255, 74, 0.07);
+  }
+}
+.card-interactive:active {
+  transform: scale(0.99);
+  transition-duration: 100ms;
+}
+
+/* Quiet inline link/row hover — colour only */
+.link-quiet {
+  transition: border-color 150ms ease, color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .link-quiet:hover {
+    border-color: rgba(201, 255, 74, 0.5);
+    color: var(--color-lime);
+  }
+}
+
+/* Primary button: grows under a real pointer, presses on tap */
+.press-grow {
+  transition: transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .press-grow:hover {
+    transform: scale(1.03);
+  }
+}
+.press-grow:active {
+  transform: scale(0.97);
+}
+
+/* Primary button press feedback */
+.press {
+  transition: transform 160ms var(--ease-out);
+}
+.press:active {
+  transform: scale(0.97);
+}
 
 /* ── Scroll choreography ─────────────────────────────────────────────
    Driven by CSS variables published by <ScrollDriver> from a passive

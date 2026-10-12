@@ -20,6 +20,22 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Emil Kowalski craft pass (Sept 27, 2026)
+
+Applied `emil-design-eng` philosophy across the codebase. Audit findings and fixes:
+
+| Before | After | Why |
+|---|---|---|
+| `transition-all` ×12 | `.card-interactive` (transform, border-color, box-shadow) | `all` animates layout properties too |
+| 15 hover effects, 0 gated | `@media (hover: hover) and (pointer: fine)` | On touch, `:hover` fires on tap — false positives |
+| hover lift with no `transform` in the transition list (self-inflicted) | folded into `.card-interactive` | The lift was snapping instantly |
+| reduced-motion → `opacity: 1 !important` | opacity/colour transitions kept, movement dropped | Reduced motion = gentler, not zero |
+| ad-hoc easing | `--ease-out: cubic-bezier(.23,1,.32,1)`, `--ease-in-out`, `--ease-drawer` | Built-in CSS curves lack punch |
+| JS motion values for aurora parallax | pure CSS via `--sy` (`aurora-layer-1/2`) | CSS animation beats JS when the main thread is busy |
+
+New primitives: `.card-interactive` (gated hover + press), `.press-grow` (primary buttons),
+`.press`, `.link-quiet`. 200ms interactions, all under Emil's 300ms ceiling.
+
 ## Scroll choreography (Sept 27, 2026) — "motion on scroll like weevolveit"
 
 `src/components/motion/scroll-driver.tsx` publishes scroll state as CSS custom

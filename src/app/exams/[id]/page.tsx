@@ -104,7 +104,7 @@ export default async function ExamPage({ params }: { params: Promise<{ id: strin
                     <Link
                       key={u.slug}
                       href={`/universities/${u.slug}`}
-                      className="rounded-full border border-line bg-panel px-3.5 py-1.5 text-sm text-fog transition-all hover:border-lime/50 hover:text-lime"
+                      className="rounded-full border border-line bg-panel px-3.5 py-1.5 text-sm text-fog link-quiet"
                     >
                       {u.name}
                     </Link>
@@ -138,7 +138,7 @@ export default async function ExamPage({ params }: { params: Promise<{ id: strin
             href={exam.officialSite}
             target="_blank"
             rel="noopener noreferrer"
-            className="anim-glow block rounded-xl bg-lime px-5 py-3.5 text-center text-sm font-bold text-ink transition-transform hover:scale-[1.02] active:scale-95"
+            className="anim-glow block rounded-xl bg-lime px-5 py-3.5 text-center text-sm font-bold text-ink press-grow"
           >
             register on the official site ↗
           </a>

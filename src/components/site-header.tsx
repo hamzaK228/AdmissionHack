@@ -100,7 +100,7 @@ export function SiteHeader() {
 
           <Link
             href="/universities"
-            className="anim-glow hidden rounded-lg bg-lime px-4 py-2 text-sm font-bold text-ink transition-transform hover:scale-[1.03] active:scale-95 md:block"
+            className="anim-glow hidden rounded-lg bg-lime px-4 py-2 text-sm font-bold text-ink press-grow md:block"
           >
             Start now
           </Link>

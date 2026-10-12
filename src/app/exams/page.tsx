@@ -54,7 +54,7 @@ export default function ExamsPage() {
                   <Reveal key={exam.id} delay={i * 60}>
                     <Link
                       href={`/exams/${exam.id}`}
-                      className="group flex h-full flex-col rounded-2xl border border-line bg-panel/70 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-lime/50 hover:shadow-[0_12px_40px_rgba(201,255,74,0.07)]"
+                      className="group flex h-full flex-col rounded-2xl border border-line bg-panel/70 p-5 card-interactive"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-bold text-paper transition-colors group-hover:text-lime">

@@ -359,7 +359,7 @@ function DocumentsTab() {
             </div>
             <div className="flex shrink-0 gap-2">
               <button type="button" onClick={() => downloadStoredFile(f)}
-                className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-bold text-fog transition-colors hover:border-lime/50 hover:text-lime">
+                className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-bold text-fog link-quiet">
                 ↓
               </button>
               <button type="button" onClick={async () => { await deleteFile(f.id); await refresh(); }}
@@ -888,7 +888,7 @@ export function DashboardClient({
                   return (
                     <li key={d.id}>
                       <button type="button" onClick={() => store.toggleDoc(d.id)}
-                        className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition-all ${
+                        className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition-[color,border-color,background-color] ${
                           done ? "border-lime/30 bg-lime/[0.05] text-lime" : "border-line bg-panel/70 text-fog hover:border-line2"
                         }`}>
                         <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${

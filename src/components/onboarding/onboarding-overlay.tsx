@@ -150,7 +150,7 @@ export function OnboardingOverlay() {
             <p className="mt-2 text-xs text-dim">takes ~30 seconds · no account needed</p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <button type="button" onClick={() => setStep(1)}
-                className="anim-glow w-full rounded-xl bg-lime px-7 py-3.5 text-sm font-bold text-ink transition-transform hover:scale-[1.03] active:scale-95 sm:w-auto">
+                className="anim-glow w-full rounded-xl bg-lime px-7 py-3.5 text-sm font-bold text-ink press-grow sm:w-auto">
                 start — 30 seconds →
               </button>
               <button type="button" onClick={skip}
@@ -170,10 +170,10 @@ export function OnboardingOverlay() {
             <div className="mt-7 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {countries.map((c) => (
                 <button key={c.code} type="button" onClick={() => autoNext(() => setCountry(c.name))}
-                  className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${
+                  className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-[color,border-color,background-color] ${
                     country === c.name
                       ? "border-lime/60 bg-lime/10"
-                      : "border-line bg-panel/70 hover:-translate-y-0.5 hover:border-lime/40"
+                      : "border-line bg-panel/70 card-interactive"
                   }`}>
                   <span className="text-2xl" aria-hidden>{c.flag}</span>
                   <span className="min-w-0">
@@ -187,10 +187,10 @@ export function OnboardingOverlay() {
                 </button>
               ))}
               <button type="button" onClick={() => autoNext(() => setCountry("undecided"))}
-                className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${
+                className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-[color,border-color,background-color] ${
                   country === "undecided"
                     ? "border-lime/60 bg-lime/10"
-                    : "border-line bg-panel/70 hover:-translate-y-0.5 hover:border-lime/40"
+                    : "border-line bg-panel/70 card-interactive"
                 }`}>
                 <span className="text-2xl" aria-hidden>🌍</span>
                 <span>
@@ -214,10 +214,10 @@ export function OnboardingOverlay() {
                 { id: "master's", icon: "🔬", title: "Master's", desc: "leveling up after my degree" },
               ] as const).map((l) => (
                 <button key={l.id} type="button" onClick={() => autoNext(() => setLevel(l.id))}
-                  className={`rounded-2xl border p-6 text-left transition-all ${
+                  className={`rounded-2xl border p-6 text-left transition-[color,border-color,background-color] ${
                     level === l.id
                       ? "border-lime/60 bg-lime/10"
-                      : "border-line bg-panel/70 hover:-translate-y-0.5 hover:border-lime/40"
+                      : "border-line bg-panel/70 card-interactive"
                   }`}>
                   <span className="text-3xl" aria-hidden>{l.icon}</span>
                   <p className="mt-3 text-lg font-bold text-paper">{l.title}</p>
@@ -281,7 +281,7 @@ export function OnboardingOverlay() {
             </div>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button type="button" onClick={finish}
-                className="anim-glow flex-1 rounded-xl bg-lime px-6 py-3.5 text-sm font-bold text-ink transition-transform hover:scale-[1.02] active:scale-95">
+                className="anim-glow flex-1 rounded-xl bg-lime px-6 py-3.5 text-sm font-bold text-ink press-grow">
                 build my workspace →
               </button>
               <button type="button" onClick={finish}
