@@ -225,6 +225,76 @@ body {
   transform: scale(0.97);
 }
 
+
+/* ── Inverted (light) section ────────────────────────────────────────
+   The palette is driven by CSS variables, so overriding them here flips
+   every utility inside the section — text, borders, panels — without
+   touching a single component. This is the light/dark scroll rhythm.
+   ------------------------------------------------------------------ */
+.section-light {
+  --color-ink: #f5f6f3;
+  --color-panel: #ffffff;
+  --color-line: #e3e6e0;
+  --color-line2: #cfd4cb;
+  --color-paper: #0a0f0b;
+  --color-fog: #4c574a;
+  --color-dim: #8d978a;
+  --color-lime: #4d7c0f;
+  --color-mint: #0f766e;
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.section-light .headline-gradient {
+  background: linear-gradient(100deg, #0a0f0b 10%, #4d7c0f 55%, #0f766e 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* giant ghost numeral behind a phase section */
+.ghost-number {
+  position: absolute;
+  z-index: 0;
+  font-weight: 700;
+  line-height: 0.74;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+  user-select: none;
+  color: currentColor;
+  opacity: 0.055;
+}
+
+/* dashed bullet row */
+.dash-item {
+  position: relative;
+  padding-left: 1.35rem;
+}
+.dash-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 0.85rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+/* the phase stepper at the bottom of the scroll */
+.stepper-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.22;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.stepper-dot[data-active="true"] {
+  opacity: 1;
+  transform: scale(1.5);
+  background: var(--color-lime);
+}
+
 /* ── Scroll choreography ─────────────────────────────────────────────
    Driven by CSS variables published by <ScrollDriver> from a passive
    scroll listener (no animation-frame loop, so it survives throttling).

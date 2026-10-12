@@ -20,6 +20,27 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Stepped scroll narrative — "must look like weevolveit when I scroll" (Sept 27, 2026)
+
+Scrolled the reference end to end and found the real structure: it is not a hero, it is a
+**stepped phase narrative** — `[ THE FRAMEWORK ]` -> giant "The 5 method." -> phase pill row ->
+progress dots -> then one section per phase, each with a giant ghost numeral watermark, a huge
+title, a tagline, dashed bullets, an image block and a sticky bottom stepper tracking progress,
+with the background flipping light <-> dark.
+
+We already had the content for exactly this: our 8-step admission journey.
+
+- **`.section-light`** inverts the palette by overriding the CSS custom properties the utilities
+  read (`--color-paper`, `--color-fog`, `--color-line`, `--color-panel`, `--color-ink`, accents).
+  One class flips every child — text, borders, panels — with zero component changes. Verified:
+  step 2 renders `bg rgb(245,246,243)` / text `rgb(10,15,11)`.
+- **`JourneyScroller`** (`src/components/journey-scroller.tsx`) — light intro ("The 8 steps.",
+  pill row of all eight, progress dots) then one section per step, alternating light/dark, each
+  with `[ STEP 0N ]`, a giant ghost numeral, the giant gradient title, the timing, the real
+  "what to do" dashed bullets, our real mistakes panel (instead of the reference's empty image
+  block), a link to the full step, and a **sticky bottom stepper** whose dots + label track the
+  step you are reading (IntersectionObserver, no scroll-jacking).
+
 ## Matching weevolveit.com (Sept 27, 2026)
 
 User asked for our site to match https://weevolveit.com/ exactly. Studied the full page

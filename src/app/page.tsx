@@ -10,6 +10,7 @@ import { SystemPath } from "@/components/motion/system-path";
 import { CountUp } from "@/components/motion/count-up";
 import { Starfield } from "@/components/globe/starfield";
 import { WelcomeLine } from "@/components/welcome-line";
+import { JourneyScroller } from "@/components/journey-scroller";
 import { UniversityGlobe } from "@/components/globe/university-globe";
 
 const modules = [
@@ -163,41 +164,8 @@ export default function HomePage() {
       <ExamMarquee />
 
       <div className="scroll-rule" aria-hidden />
-      {/* ── Journey ── */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <Reveal>
-          <SectionHeading
-            eyebrow="the journey"
-            title="Admission is 8 steps. Run them in order."
-            description="Most stress comes from running step 5 before step 2. Execute in sequence and the whole thing compiles."
-          />
-        </Reveal>
-        <ol className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {journeySteps.map((step, i) => (
-            <Reveal key={step.slug} delay={i * 45}>
-              <li>
-                <Link
-                  href={`/how-admission-works/${step.slug}`}
-                  className="group flex h-full flex-col rounded-xl border border-line bg-panel/70 p-4 card-interactive"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-md border border-lime/30 bg-lime/10 px-2 py-0.5 text-[11px] font-bold text-lime">
-                      step {step.order}
-                    </span>
-                    <span className="text-[10px] text-dim opacity-0 transition-opacity group-hover:opacity-100">
-                      open →
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm font-bold text-paper group-hover:text-lime">
-                    {step.shortTitle}
-                  </p>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-dim">{step.timing}</p>
-                </Link>
-              </li>
-            </Reveal>
-          ))}
-        </ol>
-      </section>
+      {/* ── Journey: stepped scroll narrative ── */}
+      <JourneyScroller />
 
       {/* ── Modules ── */}
       <section className="border-y border-line/70 bg-panel/40">
