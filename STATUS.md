@@ -555,9 +555,34 @@ Everything that can be finished without you is finished.
 
 **What remains is the product, not loose ends.** Pillar 3 (exam-prep academy and the Writing School
 — where your SAT site plugs in), Pillar 6 (visa and arrival), Pillar 7 (community and mentorship),
-Pillar 8 (AI advisor). That is the bulk of the roadmap in PLAN.md. Two practical ceilings to keep in
-mind: the free plan gives 1 GB of storage, which student documents will eventually exhaust, and the
-site is not deployed anywhere yet.
+Pillar 8 (AI advisor). That is the bulk of the roadmap in PLAN.md. One practical ceiling to keep in
+mind: the free plan gives 1 GB of storage, which student documents will eventually exhaust.
+
+## Deployed (2026-10-13)
+
+**Live at https://admissionhack-seven.vercel.app** — Vercel project `admissionhack` in
+`hamzak228s-projects`, production, Node 24 (matching this machine).
+
+- The three `NEXT_PUBLIC_*` values are set on the project for production **and** preview. They are
+  inlined at build time, so changing any of them needs a redeploy — which is why `NEXT_PUBLIC_SITE_URL`
+  was added and the site rebuilt, so `sitemap.xml` names the real host instead of the placeholder.
+- **Verified on the deployment, not locally:** all 12 routes return 200, including deep pages; the
+  account tab renders `[ sign in ]` rather than "accounts not configured" (**which is what proves the
+  credentials reached the build**); signing in as the test student produces a real Supabase session
+  (`sb-nkqjlccomtcqwsawbndp-auth-token`) and reads back `Aisultan · role: student` from the database;
+  and "restore from cloud" pulled the workspace across origins, reporting *1 universities* with
+  `workspace restored from cloud ✓`.
+- **Found by deploying:** `sitemap.xml` listed **85** URLs while the site generates ~1,550 pages.
+  `sitemap.ts` imported the *curated* 48 universities rather than the merged 1,504, so ~1,456 live,
+  statically generated pages were invisible to crawlers — the one audience a directory product exists
+  for. Importing from `./all` took the sitemap to **1,543** URLs.
+- `.gitignore` had gained `.env*` from the Vercel CLI, which also swallowed `.env.example`; a negation
+  keeps the file that documents the configuration tracked.
+- Redeploy after a change: `npx vercel --prod` from the repo root. `./push-to-github.sh` still pushes
+  the code, but note that Vercel is currently deploying from the **local source**, not from GitHub, so
+  a push alone does not update the site.
+- Not done: **no custom domain.** The site sits on a `vercel.app` subdomain and `NEXT_PUBLIC_SITE_URL`
+  points at it; both follow from the brand/domain decision, which is still open.
 
 ## Document folders and counselor groups (2026-10-13)
 
