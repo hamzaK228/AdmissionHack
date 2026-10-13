@@ -76,6 +76,12 @@ export interface University {
   website: string;
   /** Data quality marker per our data strategy */
   dataStatus: "community-contributed" | "verified" | "basic";
+  /**
+   * Absent from QS/ARWU on purpose — a specialist institution that neither
+   * ranking covers. Keeps the "no rank found" check meaningful by separating
+   * intent from a failed name match.
+   */
+  unranked?: boolean;
   lastVerified: string; // ISO date
 }
 

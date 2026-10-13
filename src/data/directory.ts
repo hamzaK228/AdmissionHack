@@ -87,6 +87,16 @@ const ARWU_ALIASES: Record<string, string> = {
 
 const universities: University[] = [];
 
+/**
+ * Curated entries that fail to match a ranking are a maintenance signal (a
+ * renamed institution, a missing alias), so they are worth reporting — but this
+ * module is evaluated once per rendered page, which turned a single unmatched
+ * entry into ~1,500 identical build-log lines. Keeping the seen-set on
+ * globalThis collapses that to one line per build without losing the signal.
+ */
+const seenUnranked: Set<string> =
+  ((globalThis as { __ahUnrankedWarned?: Set<string> }).__ahUnrankedWarned ??= new Set<string>());
+
 // 1) Rich curated entries — ranks come from the fetched datasets (current editions)
 const richKeys = new Set<string>();
 for (const u of richUniversities) {
@@ -95,7 +105,10 @@ for (const u of richUniversities) {
   richKeys.add(norm(QS_ALIASES[key] ?? ""));
   const qs = qsMap.get(norm(QS_ALIASES[key] ?? "")) ?? qsMap.get(key);
   const arwu = u.arwuRank ?? arwuMap.get(key) ?? arwuMap.get(norm(QS_ALIASES[key] ?? "")) ?? null;
-  if (qs == null && arwu == null) {
+  // `unranked` marks an institution that is absent from the global rankings on
+  // purpose (specialist schools), so its absence is not a data fault.
+  if (qs == null && arwu == null && !u.unranked && !seenUnranked.has(u.name)) {
+    seenUnranked.add(u.name);
     console.warn("[directory] rich entry not matched in any ranking:", u.name);
   }
   universities.push({
