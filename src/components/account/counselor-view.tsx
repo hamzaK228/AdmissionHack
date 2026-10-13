@@ -13,6 +13,9 @@ import {
   type SyncPayload,
 } from "@/lib/workspace-sync";
 import { Eyebrow } from "@/components/ui";
+import { CounselorGroups, StudentGroups } from "@/components/account/groups";
+import { listCloudFiles, signedDocumentUrl, type CloudFile } from "@/lib/cloud-files";
+import { DOC_FOLDERS } from "@/data/document-folders";
 
 const inputCls =
   "w-full rounded-lg border border-line bg-ink px-3.5 py-2.5 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-lime/60";
@@ -157,6 +160,8 @@ function StudentConnections() {
         A counselor who has not been accepted sees nothing at all — that is enforced by the database
         policy on every query, not by this screen.
       </p>
+
+      <StudentGroups />
     </div>
   );
 }
@@ -171,16 +176,32 @@ function CounselorRoster() {
   const [msg, setMsg] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [openData, setOpenData] = useState<SyncPayload | null>(null);
+  const [docs, setDocs] = useState<CloudFile[]>([]);
 
   const refresh = useCallback(async () => setStudents(await listLinkedStudents()), []);
+
+  /** One student's workspace: the synced summary, plus their folders and files. */
+  const openStudent = useCallback(async (studentId: string) => {
+    setOpen(studentId);
+    setOpenData(null);
+    setDocs([]);
+    const [workspace, files] = await Promise.all([
+      pullStudentWorkspace(studentId),
+      listCloudFiles(studentId),
+    ]);
+    setOpenData(workspace);
+    setDocs(files);
+  }, []);
   useEffect(() => {
     if (user) refresh();
   }, [user, refresh]);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
-      {/* invite + roster */}
+      {/* groups, then invite + roster */}
       <div>
+        <CounselorGroups onOpenStudent={openStudent} />
+        <hr className="my-10 border-line" />
         <Eyebrow>invite a student</Eyebrow>
         <form
           className="mt-4 flex gap-2"
@@ -224,11 +245,8 @@ function CounselorRoster() {
               <button
                 type="button"
                 disabled={s.status !== "active" || !s.studentId}
-                onClick={async () => {
-                  if (!s.studentId) return;
-                  setOpen(s.linkId);
-                  setOpenData(null);
-                  setOpenData(await pullStudentWorkspace(s.studentId));
+                onClick={() => {
+                  if (s.studentId) openStudent(s.studentId);
                 }}
                 className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
                   s.status === "active"
@@ -344,6 +362,44 @@ function CounselorRoster() {
                     <span className="ml-3 shrink-0 text-paper">{d.date}</span>
                   </li>
                 ))}
+              </ul>
+            </section>
+            <section>
+              <Eyebrow>documents</Eyebrow>
+              <ul className="mt-3 space-y-3">
+                {docs.length === 0 && (
+                  <li className="text-sm text-dim">
+                    nothing shared yet — the student's folders appear here as they upload.
+                  </li>
+                )}
+                {DOC_FOLDERS.map((folder) => {
+                  const inFolder = docs.filter((d) => d.folder === folder.id);
+                  if (inFolder.length === 0) return null;
+                  return (
+                    <li key={folder.id}>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-dim">
+                        {folder.icon} {folder.label}
+                      </p>
+                      <ul className="mt-1.5 space-y-1.5">
+                        {inFolder.map((d) => (
+                          <li key={d.id}>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const url = await signedDocumentUrl(d.path);
+                                if (url) window.open(url, "_blank", "noopener");
+                              }}
+                              className="flex w-full items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2 text-left transition-colors hover:border-lime/50"
+                            >
+                              <span className="truncate text-xs text-paper">{d.name}</span>
+                              <span className="shrink-0 text-[10px] text-lime">open ↗</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           </div>

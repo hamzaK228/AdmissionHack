@@ -492,8 +492,41 @@ Project **`admissionhack`** (`nkqjlccomtcqwsawbndp`) in the **AdmissionHack** or
 - **Signup needs one dashboard toggle**: Authentication → Email → turn *off* "Confirm email".
   With it on, `signUp` sends a confirmation mail and the default SMTP is rate-limited (429), so a
   real signup cannot complete until that is off or SMTP is configured.
-- Score reports and vault documents are still IndexedDB-only. The `ah-documents` /
-  `ah-score-reports` buckets, the `ah_documents` / `ah_score_reports` tables and their RLS exist
-  and are verified, but `score-report-upload.tsx` has not been switched over to write to them, so
-  a counselor cannot yet open the uploaded file itself — only the numbers.
+- **Vault documents now reach the cloud** (see the folders section below). Score reports are still
+  IndexedDB-only: the `ah-score-reports` bucket, the `ah_score_reports` table and their RLS exist
+  and are verified, but `score-report-upload.tsx` has not been switched over, so a counselor
+  cannot yet open the official exam report itself — only the numbers.
+
+## Document folders and counselor groups (2026-10-13)
+
+Migration `0002_document_folders_and_groups.sql`, applied to the live project.
+
+- **Six folders**, the ones a counselor asks an applicant for: Tests · CV, Essays · Recommendation
+  Letters · College List · Extracurricular Activities · Personal files. The vocabulary is a database
+  CHECK constraint, so `src/data/document-folders.ts` and the migration have to change together.
+- **Files are real files.** A document is written to the local vault first — so the workspace still
+  works with no account at all — then mirrored into the `ah-documents` bucket at
+  `{user_id}/{folder}/{name}` and recorded in `ah_documents`. Every row states which state it is in:
+  *shared with your counselor* or *on this device only*. A counselor cannot open a file that never
+  left the browser, so the UI does not imply otherwise.
+- **Counselor groups.** A counselor creates a group and shares its join code; a student enters the
+  code to join. **Entering the code is the consent** — the student's own request creates the
+  membership row — so there is deliberately **no INSERT policy** on `ah_group_members`: joining goes
+  only through `ah_join_group()`, a SECURITY DEFINER function. That is also why a student cannot
+  enumerate groups or codes.
+- **The visibility rule stayed in one place.** `ah_is_counselor_of()` gained the group case, and
+  because every table policy and the storage read helper already call it, group membership reached
+  all nine tables and the objects in storage without a second copy of the rule.
+- **35/35** — `node supabase/verify-backend.mjs`, now also covering: a student who has not joined
+  sees no groups; a wrong code is refused; a membership row cannot be written directly; joining
+  grants the workspace with no 1:1 link; a bad folder name is rejected by the database; the
+  counselor can mint a signed link to the student's file **and receive the bytes**; a guessed path
+  is not a way in; and leaving the group revokes both the rows and the file.
+- Walked in the browser: all six folders and their guidance render; a counselor creates a group and
+  reads code `HACK01`; a student joins with lowercase `hack01`; the counselor then opens the
+  student's workspace from the group roster and sees the profile, the universities, and
+  **`Personal files → passport.pdf → open ↗`**.
+- **Not testable in this harness:** the upload click itself. The in-app browser cannot set files on
+  a file input, so the drag-drop/picker path is covered by the storage assertions in the script,
+  not by a simulated click.
 

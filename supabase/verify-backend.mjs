@@ -99,10 +99,12 @@ const counselor = await signIn(COUNSELOR);
 console.log(`signed in  student=${student.id}  counselor=${counselor.id}\n`);
 
 // ── start from a known state so the run is repeatable ─────────────────────
-for (const t of ["ah_university_lists", "ah_score_reports", "ah_exam_results", "ah_checklist"]) {
+for (const t of ["ah_university_lists", "ah_score_reports", "ah_exam_results", "ah_checklist", "ah_documents"]) {
   await del(`${t}?user_id=eq.${student.id}`, student.token);
 }
 await del(`ah_counselor_links?counselor_id=eq.${counselor.id}`, counselor.token);
+await del(`ah_group_members?student_id=eq.${student.id}`, student.token);
+await del(`ah_groups?owner_id=eq.${counselor.id}`, counselor.token);
 
 // ── profiles are created lazily, with the declared role ───────────────────
 const sp = await post("rpc/ah_ensure_profile", student.token, { p_full_name: "Test Student", p_role: "student" });
@@ -189,6 +191,139 @@ check("student can revoke access", rev.body?.[0]?.status === "revoked", JSON.str
 
 const after = await get(`ah_university_lists?user_id=eq.${student.id}&select=university_slug`, counselor.token);
 check("counselor loses access the moment it is revoked", after.body?.length === 0, JSON.stringify(after.body));
+
+// ── groups: joining with the code IS the consent ────────────────────────
+const grp = await post("ah_groups", counselor.token, [
+  { owner_id: counselor.id, name: "Grade 12 — Group A" },
+]);
+check("counselor creates a group and is given a join code", !!grp.body?.[0]?.join_code, JSON.stringify(grp.body));
+const groupId = grp.body?.[0]?.id;
+const joinCode = grp.body?.[0]?.join_code;
+
+const groupsBefore = await get("ah_groups?select=id", student.token);
+check("a student who has not joined cannot see any group", groupsBefore.body?.length === 0, JSON.stringify(groupsBefore.body));
+
+const badCode = await post("rpc/ah_join_group", student.token, { p_code: "NOPE99" });
+check("a wrong join code is refused", badCode.status >= 400, `http ${badCode.status}`);
+
+const direct = await post("ah_group_members", student.token, [
+  { group_id: groupId, student_id: student.id },
+]);
+check(
+  "a membership row cannot be written directly — joining goes through the RPC",
+  direct.status >= 400,
+  `http ${direct.status}`,
+);
+
+const joined = await post("rpc/ah_join_group", student.token, { p_code: joinCode });
+check(
+  "joining with the code succeeds",
+  joined.body?.name === "Grade 12 — Group A",
+  JSON.stringify(joined.body),
+);
+
+const viaGroup = await get(
+  `ah_university_lists?user_id=eq.${student.id}&select=university_slug`,
+  counselor.token,
+);
+check(
+  "group membership alone grants the counselor the workspace (no 1:1 link at this point)",
+  viaGroup.body?.length === 1,
+  JSON.stringify(viaGroup.body),
+);
+
+// ── documents live in folders ───────────────────────────────────────────
+const badFolder = await post("ah_documents", student.token, [
+  { user_id: student.id, name: "x.pdf", file_path: `${student.id}/nonsense/x.pdf`, folder: "nonsense" },
+]);
+check("the folder vocabulary is enforced by the database", badFolder.status >= 400, `http ${badFolder.status}`);
+
+const doc = await post("ah_documents", student.token, [
+  {
+    user_id: student.id,
+    name: "passport.pdf",
+    file_path: `${student.id}/personal/passport.pdf`,
+    folder: "personal",
+    size_bytes: 1234,
+    mime_type: "application/pdf",
+  },
+]);
+check("a student files a document into a folder", doc.body?.[0]?.folder === "personal", JSON.stringify(doc.body));
+
+const seenDocs = await get(`ah_documents?user_id=eq.${student.id}&select=name,folder`, counselor.token);
+check(
+  "the counselor sees the student's documents, with their folder",
+  seenDocs.body?.[0]?.folder === "personal",
+  JSON.stringify(seenDocs.body),
+);
+
+// ── the file itself, in storage ─────────────────────────────────────────
+// A row is not a document: this proves the counselor can open the bytes.
+const BUCKET = "ah-documents";
+const PATH = `${student.id}/personal/passport.pdf`;
+const signUrl = (tok, p) =>
+  fetch(`${U}/storage/v1/object/sign/${BUCKET}/${p}`, {
+    method: "POST",
+    headers: { ...H(tok), "Content-Type": "application/json" },
+    body: JSON.stringify({ expiresIn: 600 }),
+  });
+
+const put = await fetch(`${U}/storage/v1/object/${BUCKET}/${PATH}`, {
+  method: "POST",
+  headers: {
+    apikey: K,
+    Authorization: `Bearer ${student.token}`,
+    "Content-Type": "application/pdf",
+    "x-upsert": "true",
+  },
+  body: new TextEncoder().encode("%PDF-1.4 fake passport scan for the verification run"),
+});
+check("student uploads the file into the private bucket", put.status < 300, `http ${put.status} ${(await put.text()).slice(0, 140)}`);
+
+const ownSign = await signUrl(student.token, PATH);
+const ownBody = await ownSign.json().catch(() => null);
+check("the owner can mint a signed link to their own file", ownSign.status < 300 && !!ownBody?.signedURL, JSON.stringify(ownBody).slice(0, 160));
+
+if (ownBody?.signedURL) {
+  const fetched = await fetch(`${U}/storage/v1${ownBody.signedURL}`);
+  const text = await fetched.text();
+  check("…and the signed link really returns the bytes", fetched.status < 300 && text.includes("fake passport"), `http ${fetched.status}`);
+}
+
+const counselorSign = await signUrl(counselor.token, PATH);
+check(
+  "the group counselor can mint a signed link to the student's file",
+  counselorSign.status < 300,
+  `http ${counselorSign.status} ${(await counselorSign.text()).slice(0, 140)}`,
+);
+
+const straySign = await signUrl(counselor.token, `${student.id}/personal/not-mine.pdf`);
+check(
+  "but only for paths that exist — a guessed path is not a way in",
+  straySign.status >= 400,
+  `http ${straySign.status}`,
+);
+
+const leftStatus = await del(
+  `ah_group_members?group_id=eq.${groupId}&student_id=eq.${student.id}`,
+  student.token,
+);
+const afterLeave = await get(
+  `ah_university_lists?user_id=eq.${student.id}&select=university_slug`,
+  counselor.token,
+);
+check(
+  "leaving the group takes the access away again",
+  afterLeave.body?.length === 0,
+  `delete http ${leftStatus} → ${JSON.stringify(afterLeave.body)}`,
+);
+
+const signAfterLeave = await signUrl(counselor.token, PATH);
+check(
+  "…including access to the file in storage",
+  signAfterLeave.status >= 400,
+  `http ${signAfterLeave.status}`,
+);
 
 // ── anonymous access ────────────────────────────────────────────────────
 const anon = await fetch(rest("ah_profiles?select=id"), { headers: { apikey: K } });

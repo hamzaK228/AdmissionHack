@@ -135,6 +135,7 @@ export type Database = {
       ah_documents: {
         Row: {
           file_path: string;
+          folder: string;
           id: string;
           mime_type: string | null;
           name: string;
@@ -144,6 +145,7 @@ export type Database = {
         };
         Insert: {
           file_path: string;
+          folder?: string;
           id?: string;
           mime_type?: string | null;
           name: string;
@@ -153,6 +155,7 @@ export type Database = {
         };
         Update: {
           file_path?: string;
+          folder?: string;
           id?: string;
           mime_type?: string | null;
           name?: string;
@@ -199,6 +202,74 @@ export type Database = {
           {
             foreignKeyName: "ah_exam_results_user_id_fkey";
             columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_group_members: {
+        Row: {
+          group_id: string;
+          joined_at: string;
+          student_id: string;
+        };
+        Insert: {
+          group_id: string;
+          joined_at?: string;
+          student_id: string;
+        };
+        Update: {
+          group_id?: string;
+          joined_at?: string;
+          student_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_group_members_group_id_fkey";
+            columns: ["group_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_groups";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ah_group_members_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_groups: {
+        Row: {
+          created_at: string;
+          id: string;
+          join_code: string;
+          name: string;
+          note: string | null;
+          owner_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          join_code?: string;
+          name: string;
+          note?: string | null;
+          owner_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          join_code?: string;
+          name?: string;
+          note?: string | null;
+          owner_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_groups_owner_id_fkey";
+            columns: ["owner_id"];
             isOneToOne: false;
             referencedRelation: "ah_profiles";
             referencedColumns: ["id"];
@@ -413,6 +484,27 @@ export type Database = {
       };
       ah_is_counselor_of: { Args: { student: string }; Returns: boolean };
       ah_is_my_counselor: { Args: { counselor: string }; Returns: boolean };
+      ah_owns_group: { Args: { g: string }; Returns: boolean };
+      ah_is_group_member: { Args: { g: string }; Returns: boolean };
+      ah_is_my_group_owner: { Args: { counselor: string }; Returns: boolean };
+      /** joins by code — entering the code is the student's consent */
+      ah_join_group: {
+        Args: { p_code: string };
+        Returns: {
+          created_at: string;
+          id: string;
+          join_code: string;
+          name: string;
+          note: string | null;
+          owner_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "ah_groups";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
       ah_portfolio_kind: "activity" | "award" | "work" | "volunteering";

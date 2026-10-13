@@ -11,15 +11,7 @@ import { CounselorView } from "@/components/account/counselor-view";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
-import {
-  addFiles,
-  deleteFile,
-  downloadStoredFile,
-  fileIcon,
-  formatSize,
-  getAllFiles,
-  type StoredFile,
-} from "@/components/dashboard/doc-vault";
+import { DocumentFolders } from "@/components/dashboard/document-folders";
 import { countries } from "@/data/countries";
 import { Eyebrow } from "@/components/ui";
 
@@ -295,94 +287,7 @@ function UniversitiesTab({ uniIndex }: { uniIndex: Record<string, SlimUni> }) {
   );
 }
 
-/* ── Documents tab (IndexedDB vault) ─────────────────────── */
-function DocumentsTab() {
-  const [files, setFiles] = useState<StoredFile[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const refresh = async () => setFiles(await getAllFiles());
-  useEffect(() => {
-    refresh();
-  }, []);
-
-  const onUpload = async (list: FileList | null) => {
-    if (!list || list.length === 0) return;
-    setBusy(true);
-    await addFiles(list);
-    await refresh();
-    setBusy(false);
-  };
-
-  const total = files.reduce((s, f) => s + f.size, 0);
-
-  return (
-    <div>
-      <p className="max-w-2xl text-sm leading-relaxed text-fog">
-        Your personal document vault — transcripts, certificates, essays, anything. Files are stored{" "}
-        <span className="text-lime">only in your browser</span> (IndexedDB), never uploaded anywhere.
-      </p>
-
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); onUpload(e.dataTransfer.files); }}
-        className={`mt-6 rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
-          dragging ? "border-lime/60 bg-lime/[0.06]" : "border-line2 bg-panel/40"
-        }`}
-      >
-        <p className="text-3xl">🗄️</p>
-        <p className="mt-2 text-sm font-bold text-paper">drop files here, or</p>
-        <input ref={inputRef} type="file" multiple className="hidden"
-          onChange={(e) => { onUpload(e.target.files); e.target.value = ""; }} />
-        <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}
-          className="anim-glow mt-3 rounded-lg bg-lime px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-40">
-          {busy ? "storing…" : "choose files"}
-        </button>
-        <p className="mt-2 text-[11px] text-dim">PDF · images · DOCX · anything — stays on this device</p>
-      </div>
-
-      <p className="mt-5 text-xs uppercase tracking-widest text-dim">
-        <span className="text-lime">{files.length}</span> files · {formatSize(total)} stored
-      </p>
-
-      <div className="mt-4 space-y-2">
-        {files.map((f) => (
-          <div key={f.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-panel/70 p-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="text-xl">{fileIcon(f.name)}</span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-paper">{f.name}</p>
-                <p className="text-[11px] text-dim">
-                  {formatSize(f.size)} ·{" "}
-                  {new Date(f.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} ·{" "}
-                  {f.type.split("/").pop()}
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <button type="button" onClick={() => downloadStoredFile(f)}
-                className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-bold text-fog link-quiet">
-                ↓
-              </button>
-              <button type="button" onClick={async () => { await deleteFile(f.id); await refresh(); }}
-                aria-label={`Delete ${f.name}`}
-                className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-dim transition-colors hover:border-red/50 hover:text-red">
-                ✕
-              </button>
-            </div>
-          </div>
-        ))}
-        {files.length === 0 && (
-          <p className="rounded-xl border border-dashed border-line2 p-6 text-sm text-fog">
-            vault is empty — add your passport scan or transcript to see it here.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
+/* ── Documents tab now lives in document-folders.tsx ─────── */
 
 /* ── Exams tab ───────────────────────────────────────────── */
 function ExamsTab({ ieltsMinimums }: { ieltsMinimums: { destination: string; scores: string }[] }) {
@@ -884,7 +789,7 @@ export function DashboardClient({
         )}
         {tab === "documents" && (
           <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">
-            <DocumentsTab />
+            <DocumentFolders />
             <aside>
               <Eyebrow>document checklist</Eyebrow>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-line">

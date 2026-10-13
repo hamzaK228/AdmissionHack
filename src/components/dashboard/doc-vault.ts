@@ -18,6 +18,10 @@ export interface StoredFile {
   kind?: "vault" | "score-report";
   /** for score reports: which exam it belongs to (ielts | toefl | sat) */
   examId?: string;
+  /** for vault files: which workspace folder (see src/data/document-folders.ts) */
+  folder?: string;
+  /** set once this file has been mirrored into cloud storage, so a counselor can open it */
+  cloudPath?: string;
   blob: Blob;
 }
 
@@ -36,12 +40,12 @@ function openDB(): Promise<IDBDatabase> {
 
 export async function addFiles(
   files: FileList | File[],
-  meta: { kind?: StoredFile["kind"]; examId?: string } = {},
-): Promise<number> {
+  meta: { kind?: StoredFile["kind"]; examId?: string; folder?: string } = {},
+): Promise<StoredFile[]> {
   const db = await openDB();
   const tx = db.transaction(STORE, "readwrite");
   const store = tx.objectStore(STORE);
-  let n = 0;
+  const created: StoredFile[] = [];
   for (const file of Array.from(files)) {
     const record: StoredFile = {
       id: crypto.randomUUID(),
@@ -51,17 +55,36 @@ export async function addFiles(
       addedAt: new Date().toISOString(),
       kind: meta.kind ?? "vault",
       ...(meta.examId ? { examId: meta.examId } : {}),
+      ...(meta.folder ? { folder: meta.folder } : {}),
       blob: file,
     };
     store.put(record);
-    n++;
+    created.push(record);
   }
   await new Promise<void>((resolve, reject) => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
   db.close();
-  return n;
+  return created;
+}
+
+/** Records that a local file has been mirrored to cloud storage. */
+export async function markFileUploaded(id: string, cloudPath: string): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction(STORE, "readwrite");
+  const store = tx.objectStore(STORE);
+  const existing = await new Promise<StoredFile | undefined>((resolve) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result as StoredFile | undefined);
+    req.onerror = () => resolve(undefined);
+  });
+  if (existing) store.put({ ...existing, cloudPath });
+  await new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
 }
 
 export async function getAllFiles(): Promise<StoredFile[]> {
@@ -76,21 +99,35 @@ export async function getAllFiles(): Promise<StoredFile[]> {
   return files.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 }
 
-export async function deleteFile(id: string): Promise<void> {
+/** Removes the local record and hands it back, so the caller can drop the cloud copy too. */
+export async function deleteFile(id: string): Promise<StoredFile | undefined> {
   const db = await openDB();
   const tx = db.transaction(STORE, "readwrite");
-  tx.objectStore(STORE).delete(id);
+  const store = tx.objectStore(STORE);
+  const existing = await new Promise<StoredFile | undefined>((resolve) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result as StoredFile | undefined);
+    req.onerror = () => resolve(undefined);
+  });
+  store.delete(id);
   await new Promise<void>((resolve, reject) => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+  return existing;
 }
 
 /** Files belonging to one exam (score reports). */
 export async function filesForExam(examId: string): Promise<StoredFile[]> {
   const all = await getAllFiles();
   return all.filter((f) => f.kind === "score-report" && f.examId === examId);
+}
+
+/** Vault files filed in one workspace folder. */
+export async function filesInFolder(folder: string): Promise<StoredFile[]> {
+  const all = await getAllFiles();
+  return all.filter((f) => f.kind !== "score-report" && f.folder === folder);
 }
 
 export function downloadStoredFile(f: StoredFile) {
