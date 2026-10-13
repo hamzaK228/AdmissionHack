@@ -2,21 +2,169 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/use-auth";
-import { inviteStudent, listLinkedStudents, pullStudentWorkspace, type LinkedStudent, type SyncPayload } from "@/lib/workspace-sync";
+import {
+  inviteStudent,
+  listLinkedStudents,
+  listMyInvites,
+  pullStudentWorkspace,
+  respondToInvite,
+  type Invite,
+  type LinkedStudent,
+  type SyncPayload,
+} from "@/lib/workspace-sync";
 import { Eyebrow } from "@/components/ui";
 
 const inputCls =
   "w-full rounded-lg border border-line bg-ink px-3.5 py-2.5 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-lime/60";
 
+const frameCls = "max-w-xl rounded-2xl border border-dashed border-line2 bg-panel/40 p-6";
+
 /**
- * Counselor view — every student who accepted the invite, side by side.
+ * Counselor tab — both sides of the link.
  *
- * Access is enforced in the database, not here: the RLS policy only returns rows
- * for students with an accepted link, so a counselor account that guesses an id
- * still reads nothing. This UI just presents what the policy allows through.
+ * A counselor invites students by email and reviews the workspaces of the ones
+ * who accepted. A student sees who has asked for access and grants or withdraws
+ * it. Access itself is enforced in the database, not here: the RLS policy only
+ * returns rows for an ACCEPTED link, so a counselor account that guesses an id
+ * still reads nothing, and a revocation takes effect on the next query.
  */
 export function CounselorView() {
   const { user, configured } = useAuth();
+
+  if (!configured || !user) {
+    return (
+      <div className={frameCls}>
+        <Eyebrow>counselor view</Eyebrow>
+        <p className="mt-3 text-sm leading-relaxed text-fog">
+          Sign in to connect a counselor account to a student workspace. Each student must accept
+          before anything is visible — consent is enforced by the database, not by this screen.
+        </p>
+      </div>
+    );
+  }
+
+  return user.role === "counselor" ? <CounselorRoster /> : <StudentConnections />;
+}
+
+/* ── the student's side ───────────────────────────────────────────────────── */
+
+function StudentConnections() {
+  const { user } = useAuth();
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => setInvites(await listMyInvites()), []);
+  useEffect(() => {
+    if (user) refresh();
+  }, [user, refresh]);
+
+  const respond = async (linkId: string, accept: boolean) => {
+    setBusy(linkId);
+    const res = await respondToInvite(linkId, accept);
+    setBusy(null);
+    setMsg(
+      res.ok
+        ? accept
+          ? "accepted — they can now see your workspace"
+          : "declined — they can't see anything"
+        : res.error,
+    );
+    refresh();
+  };
+
+  const pending = invites.filter((i) => i.status === "pending");
+  const active = invites.filter((i) => i.status === "active");
+
+  return (
+    <div className="max-w-2xl">
+      <Eyebrow>your counselors</Eyebrow>
+      <p className="mt-3 text-sm leading-relaxed text-fog">
+        A counselor can ask to review your workspace. Nothing is visible until you accept here, and
+        you can withdraw access at any time.
+      </p>
+      {msg && <p className="mt-3 text-xs leading-relaxed text-amber">{msg}</p>}
+
+      {pending.length > 0 && (
+        <ul className="mt-6 space-y-2">
+          {pending.map((i) => (
+            <li
+              key={i.linkId}
+              className="rounded-xl border border-amber/40 bg-amber/5 px-4 py-3.5"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-paper">
+                    {i.counselorName}
+                  </span>
+                  <span className="text-[11px] text-dim">
+                    asking to review your workspace · not yet visible
+                  </span>
+                </span>
+                <span className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    disabled={busy === i.linkId}
+                    onClick={() => respond(i.linkId, true)}
+                    className="anim-glow rounded-lg bg-lime px-3.5 py-2 text-xs font-bold text-ink press-grow disabled:opacity-40"
+                  >
+                    {busy === i.linkId ? "…" : "accept"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy === i.linkId}
+                    onClick={() => respond(i.linkId, false)}
+                    className="link-quiet rounded-lg border border-line2 px-3.5 py-2 text-xs font-bold text-fog disabled:opacity-40"
+                  >
+                    decline
+                  </button>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Eyebrow>with access</Eyebrow>
+      <ul className="mt-4 space-y-2">
+        {active.length === 0 && (
+          <li className="rounded-xl border border-dashed border-line2 p-5 text-sm text-fog">
+            nobody can see your workspace right now.
+          </li>
+        )}
+        {active.map((i) => (
+          <li
+            key={i.linkId}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel/70 px-4 py-3.5"
+          >
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-bold text-paper">{i.counselorName}</span>
+              <span className="text-[11px] text-mint">can see your workspace · read-only</span>
+            </span>
+            <button
+              type="button"
+              disabled={busy === i.linkId}
+              onClick={() => respond(i.linkId, false)}
+              className="shrink-0 rounded-lg border border-line2 px-3.5 py-2 text-xs font-bold text-fog transition-colors hover:border-amber/50 hover:text-amber disabled:opacity-40"
+            >
+              {busy === i.linkId ? "…" : "revoke access"}
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-6 text-xs leading-relaxed text-dim">
+        A counselor who has not been accepted sees nothing at all — that is enforced by the database
+        policy on every query, not by this screen.
+      </p>
+    </div>
+  );
+}
+
+/* ── the counselor's side ─────────────────────────────────────────────────── */
+
+function CounselorRoster() {
+  const { user } = useAuth();
   const [students, setStudents] = useState<LinkedStudent[]>([]);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,31 +176,6 @@ export function CounselorView() {
   useEffect(() => {
     if (user) refresh();
   }, [user, refresh]);
-
-  if (!configured || !user) {
-    return (
-      <div className="max-w-xl rounded-2xl border border-dashed border-line2 bg-panel/40 p-6">
-        <Eyebrow>counselor view</Eyebrow>
-        <p className="mt-3 text-sm leading-relaxed text-fog">
-          Sign in with a counselor account to invite students and review their workspaces here.
-          Each student must accept before you can see anything — consent is enforced by the
-          database, not by this screen.
-        </p>
-      </div>
-    );
-  }
-
-  if (user.role !== "counselor") {
-    return (
-      <div className="max-w-xl rounded-2xl border border-dashed border-line2 bg-panel/40 p-6">
-        <Eyebrow>counselor view</Eyebrow>
-        <p className="mt-3 text-sm leading-relaxed text-fog">
-          Your account is a <span className="text-lime">{user.role}</span> account. The counselor
-          view appears for accounts created with the counselor role.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
@@ -189,12 +312,18 @@ export function CounselorView() {
                   <li className="text-sm text-dim">none recorded</li>
                 )}
                 {Object.entries(openData.exams).map(([k, v]) => (
-                  <li
-                    key={k}
-                    className="flex items-center justify-between rounded-lg border border-line bg-ink px-3 py-2 text-xs"
-                  >
-                    <span className="uppercase text-fog">{k}</span>
-                    <span className="font-bold text-lime">{v}</span>
+                  <li key={k} className="rounded-lg border border-line bg-ink px-3 py-2 text-xs">
+                    <span className="flex items-center justify-between">
+                      <span className="uppercase text-fog">{k}</span>
+                      <span className="font-bold text-lime">{v.overall ?? "—"}</span>
+                    </span>
+                    {v.sections && Object.keys(v.sections).length > 0 && (
+                      <span className="mt-1 block text-[10px] tracking-wide text-dim">
+                        {Object.entries(v.sections)
+                          .map(([sk, sv]) => `${sk} ${sv}`)
+                          .join(" · ")}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

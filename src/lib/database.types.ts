@@ -1,153 +1,436 @@
 /**
- * Database types for the AdmissionHack schema.
+ * Database types for AdmissionHack.
  *
- * Hand-authored to match `supabase/migrations/0001_admissionhack_schema.sql`.
- * Once the project is provisioned, regenerate with the Supabase CLI/MCP
- * (`generate_typescript_types`) and replace this file — then any drift between
- * the migration and the code becomes a compile error instead of a runtime one.
+ * GENERATED — do not hand-edit the `Database` type below. It comes from the live
+ * project (`generate_typescript_types` against nkqjlccomtcqwsawbndp, which is
+ * where supabase/migrations/0001_admissionhack_schema.sql has been applied).
+ * Regenerate the same way whenever the migration changes; drift between the two
+ * then becomes a compile error instead of a runtime one.
+ *
+ * Two deliberate differences from the raw generator output:
+ *   * the `Tables` / `TablesInsert` / `TablesUpdate` / `Enums` /
+ *     `CompositeTypes` helper types and `Constants` are omitted. supabase-js
+ *     consumes only the `Database` type; the helpers exist for app code, and
+ *     this app addresses tables through the `T` map in ./supabase. Keep them if
+ *     you start using them.
+ *   * the aliases at the bottom are appended by hand, so the rest of the code
+ *     reads `AhRole` rather than `Database["public"]["Enums"]["ah_role"]`.
+ *     Re-append them after regenerating.
  */
 
-export type AhRole = "student" | "counselor" | "parent";
-export type AhTier = "dream" | "target" | "safe";
-export type AhPortfolioKind = "activity" | "award" | "work" | "volunteering";
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export interface Database {
-  /** marker supabase-js reads to detect generated types */
-  __InternalSupabase: { PostgrestVersion: "12" };
+export type Database = {
+  // Lets createClient infer the right PostgREST semantics without an explicit
+  // second type argument. This value must match the live project — a wrong one
+  // silently collapses every query type to `never`.
+  __InternalSupabase: {
+    PostgrestVersion: "14.18";
+  };
   public: {
     Tables: {
-      ah_profiles: {
+      ah_checklist: {
         Row: {
-          id: string;
-          role: AhRole;
-          full_name: string;
-          level: string | null;
-          country: string | null;
-          intake: string | null;
-          budget: number | null;
-          gpa: string | null;
-          gpa_scale: string | null;
-          created_at: string;
-          updated_at: string;
+          doc_key: string;
+          done: boolean;
+          user_id: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["ah_profiles"]["Row"]> & { id: string };
-        Update: Partial<Database["public"]["Tables"]["ah_profiles"]["Row"]>;
-        Relationships: [];
+        Insert: {
+          doc_key: string;
+          done?: boolean;
+          user_id: string;
+        };
+        Update: {
+          doc_key?: string;
+          done?: boolean;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_checklist_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_counselor_links: {
+        Row: {
+          counselor_id: string;
+          created_at: string;
+          id: string;
+          responded_at: string | null;
+          status: string;
+          student_email: string;
+          student_id: string | null;
+        };
+        Insert: {
+          counselor_id: string;
+          created_at?: string;
+          id?: string;
+          responded_at?: string | null;
+          status?: string;
+          student_email: string;
+          student_id?: string | null;
+        };
+        Update: {
+          counselor_id?: string;
+          created_at?: string;
+          id?: string;
+          responded_at?: string | null;
+          status?: string;
+          student_email?: string;
+          student_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_counselor_links_counselor_id_fkey";
+            columns: ["counselor_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ah_counselor_links_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_deadlines: {
+        Row: {
+          created_at: string;
+          due_on: string;
+          id: string;
+          title: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          due_on: string;
+          id?: string;
+          title: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          due_on?: string;
+          id?: string;
+          title?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_deadlines_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_documents: {
+        Row: {
+          file_path: string;
+          id: string;
+          mime_type: string | null;
+          name: string;
+          size_bytes: number | null;
+          uploaded_at: string;
+          user_id: string;
+        };
+        Insert: {
+          file_path: string;
+          id?: string;
+          mime_type?: string | null;
+          name: string;
+          size_bytes?: number | null;
+          uploaded_at?: string;
+          user_id: string;
+        };
+        Update: {
+          file_path?: string;
+          id?: string;
+          mime_type?: string | null;
+          name?: string;
+          size_bytes?: number | null;
+          uploaded_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_documents_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       ah_exam_results: {
         Row: {
-          user_id: string;
           exam_id: string;
           overall: string | null;
-          sections: Record<string, string>;
+          sections: Json;
           taken_on: string | null;
           updated_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["ah_exam_results"]["Row"]> & {
           user_id: string;
-          exam_id: string;
         };
-        Update: Partial<Database["public"]["Tables"]["ah_exam_results"]["Row"]>;
+        Insert: {
+          exam_id: string;
+          overall?: string | null;
+          sections?: Json;
+          taken_on?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          exam_id?: string;
+          overall?: string | null;
+          sections?: Json;
+          taken_on?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_exam_results_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_portfolio: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          hours: string | null;
+          id: string;
+          kind: Database["public"]["Enums"]["ah_portfolio_kind"];
+          org: string | null;
+          title: string;
+          user_id: string;
+          years: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          description?: string | null;
+          hours?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["ah_portfolio_kind"];
+          org?: string | null;
+          title: string;
+          user_id: string;
+          years?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          description?: string | null;
+          hours?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["ah_portfolio_kind"];
+          org?: string | null;
+          title?: string;
+          user_id?: string;
+          years?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_portfolio_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_profiles: {
+        Row: {
+          budget: number | null;
+          country: string | null;
+          created_at: string;
+          full_name: string;
+          gpa: string | null;
+          gpa_scale: string | null;
+          id: string;
+          intake: string | null;
+          level: string | null;
+          role: Database["public"]["Enums"]["ah_role"];
+          updated_at: string;
+        };
+        Insert: {
+          budget?: number | null;
+          country?: string | null;
+          created_at?: string;
+          full_name?: string;
+          gpa?: string | null;
+          gpa_scale?: string | null;
+          id: string;
+          intake?: string | null;
+          level?: string | null;
+          role?: Database["public"]["Enums"]["ah_role"];
+          updated_at?: string;
+        };
+        Update: {
+          budget?: number | null;
+          country?: string | null;
+          created_at?: string;
+          full_name?: string;
+          gpa?: string | null;
+          gpa_scale?: string | null;
+          id?: string;
+          intake?: string | null;
+          level?: string | null;
+          role?: Database["public"]["Enums"]["ah_role"];
+          updated_at?: string;
+        };
         Relationships: [];
       };
       ah_score_reports: {
         Row: {
-          id: string;
-          user_id: string;
           exam_id: string;
-          file_path: string;
           file_name: string;
-          mime_type: string | null;
-          size_bytes: number | null;
+          file_path: string;
+          id: string;
           is_verified: boolean;
-          uploaded_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["ah_score_reports"]["Row"]> & {
-          user_id: string;
-          exam_id: string;
-          file_path: string;
-          file_name: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["ah_score_reports"]["Row"]>;
-        Relationships: [];
-      };
-      ah_university_lists: {
-        Row: { user_id: string; university_slug: string; tier: AhTier; added_at: string };
-        Insert: { user_id: string; university_slug: string; tier?: AhTier };
-        Update: Partial<Database["public"]["Tables"]["ah_university_lists"]["Row"]>;
-        Relationships: [];
-      };
-      ah_deadlines: {
-        Row: { id: string; user_id: string; title: string; due_on: string; created_at: string };
-        Insert: { user_id: string; title: string; due_on: string };
-        Update: Partial<Database["public"]["Tables"]["ah_deadlines"]["Row"]>;
-        Relationships: [];
-      };
-      ah_portfolio: {
-        Row: {
-          id: string;
-          user_id: string;
-          kind: AhPortfolioKind;
-          title: string;
-          org: string | null;
-          description: string | null;
-          years: string | null;
-          hours: string | null;
-          created_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["ah_portfolio"]["Row"]> & {
-          user_id: string;
-          title: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["ah_portfolio"]["Row"]>;
-        Relationships: [];
-      };
-      ah_documents: {
-        Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          file_path: string;
           mime_type: string | null;
           size_bytes: number | null;
           uploaded_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["ah_documents"]["Row"]> & {
           user_id: string;
-          name: string;
-          file_path: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["ah_documents"]["Row"]>;
-        Relationships: [];
-      };
-      ah_checklist: {
-        Row: { user_id: string; doc_key: string; done: boolean };
-        Insert: { user_id: string; doc_key: string; done?: boolean };
-        Update: Partial<Database["public"]["Tables"]["ah_checklist"]["Row"]>;
-        Relationships: [];
-      };
-      ah_counselor_links: {
-        Row: {
-          id: string;
-          counselor_id: string;
-          student_email: string;
-          student_id: string | null;
-          status: "pending" | "active" | "revoked";
-          created_at: string;
+          verified_at: string | null;
+          verified_by: string | null;
         };
         Insert: {
-          counselor_id: string;
-          student_email: string;
-          student_id?: string | null;
-          status?: "pending" | "active" | "revoked";
+          exam_id: string;
+          file_name: string;
+          file_path: string;
+          id?: string;
+          is_verified?: boolean;
+          mime_type?: string | null;
+          size_bytes?: number | null;
+          uploaded_at?: string;
+          user_id: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
         };
-        Update: Partial<Database["public"]["Tables"]["ah_counselor_links"]["Row"]>;
-        Relationships: [];
+        Update: {
+          exam_id?: string;
+          file_name?: string;
+          file_path?: string;
+          id?: string;
+          is_verified?: boolean;
+          mime_type?: string | null;
+          size_bytes?: number | null;
+          uploaded_at?: string;
+          user_id?: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_score_reports_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ah_score_reports_verified_by_fkey";
+            columns: ["verified_by"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_university_lists: {
+        Row: {
+          added_at: string;
+          tier: Database["public"]["Enums"]["ah_tier"];
+          university_slug: string;
+          user_id: string;
+        };
+        Insert: {
+          added_at?: string;
+          tier?: Database["public"]["Enums"]["ah_tier"];
+          university_slug: string;
+          user_id: string;
+        };
+        Update: {
+          added_at?: string;
+          tier?: Database["public"]["Enums"]["ah_tier"];
+          university_slug?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_university_lists_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: { ah_role: AhRole; ah_tier: AhTier; ah_portfolio_kind: AhPortfolioKind };
-    CompositeTypes: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      ah_can_read_object: {
+        Args: { obj_bucket: string; obj_name: string };
+        Returns: boolean;
+      };
+      ah_ensure_profile: {
+        Args: {
+          p_full_name?: string;
+          p_role?: Database["public"]["Enums"]["ah_role"];
+        };
+        Returns: {
+          budget: number | null;
+          country: string | null;
+          created_at: string;
+          full_name: string;
+          gpa: string | null;
+          gpa_scale: string | null;
+          id: string;
+          intake: string | null;
+          level: string | null;
+          role: Database["public"]["Enums"]["ah_role"];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "ah_profiles";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      ah_is_counselor_of: { Args: { student: string }; Returns: boolean };
+      ah_is_my_counselor: { Args: { counselor: string }; Returns: boolean };
+    };
+    Enums: {
+      ah_portfolio_kind: "activity" | "award" | "work" | "volunteering";
+      ah_role: "student" | "counselor" | "parent";
+      ah_tier: "dream" | "target" | "safe";
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
-}
+};
+
+/* ── hand-appended aliases (re-append after regenerating) ─────────────────── */
+
+export type AhRole = Database["public"]["Enums"]["ah_role"];
+export type AhTier = Database["public"]["Enums"]["ah_tier"];
+export type AhPortfolioKind = Database["public"]["Enums"]["ah_portfolio_kind"];
+export type AhProfileRow = Database["public"]["Tables"]["ah_profiles"]["Row"];
+
+/** `ah_counselor_links.status` is a CHECK constraint, not an enum, in Postgres. */
+export type AhLinkStatus = "pending" | "active" | "revoked";

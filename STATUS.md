@@ -465,3 +465,35 @@ hero composition solid; design detector clean across all new files.
 - Mobile views not yet visually verified (responsive classes are in place)
 - Next up per plan: Phase 1 (match engine, deadline calendar) or Academy v1 (SAT hub engine per
   docs/exam-hub-blueprint.md) — user's SAT site stays separate and plugs in later
+
+## Backend is live (2026-10-13)
+
+Project **`admissionhack`** (`nkqjlccomtcqwsawbndp`) in the **AdmissionHack** org, region
+`eu-central-1`. `supabase/migrations/0001_admissionhack_schema.sql` was applied verbatim.
+
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` live in `.env.local` (publishable
+  key; both values are public by design and ship to the browser). **Changing them needs a
+  rebuild** — they are inlined into the client bundle at build time.
+- **19/19** — `node supabase/verify-backend.mjs`. The consent model is exercised through the real
+  API with real JWTs, not a SQL simulation: a counselor is blind before the student accepts,
+  sighted after, and blind again the moment it is revoked; the owner cannot insert a pre-verified
+  score report nor write into another workspace; a counselor can verify a report but cannot
+  rewrite the evidence it attested to; anonymous reads nothing at all. Re-runnable — it cleans up
+  after itself.
+- Profiles are created lazily by `ah_ensure_profile` on first authenticated load, and the same
+  call claims any invite already addressed to that email. **There is no trigger on `auth.users`**
+  — deliberate, so a fault in this schema can never roll back another app's signups, and so the
+  schema stays portable between a dedicated project and a shared database.
+- Verified in the browser end to end: sign in → **upload this workspace** (rows confirmed in SQL)
+  → **restore from cloud** → student accepts a counselor invite → counselor opens the read-only
+  workspace and sees profile, universities and scores.
+- Throwaway test accounts `student@example.com` / `counselor@example.com` (password
+  `TestPassword123!`) back that walkthrough — **delete them before real use.**
+- **Signup needs one dashboard toggle**: Authentication → Email → turn *off* "Confirm email".
+  With it on, `signUp` sends a confirmation mail and the default SMTP is rate-limited (429), so a
+  real signup cannot complete until that is off or SMTP is configured.
+- Score reports and vault documents are still IndexedDB-only. The `ah-documents` /
+  `ah-score-reports` buckets, the `ah_documents` / `ah_score_reports` tables and their RLS exist
+  and are verified, but `score-report-upload.tsx` has not been switched over to write to them, so
+  a counselor cannot yet open the uploaded file itself — only the numbers.
+

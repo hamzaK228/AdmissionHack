@@ -60,6 +60,20 @@ export interface Deadline {
   date: string; // ISO yyyy-mm-dd
 }
 
+/**
+ * A whole workspace arriving from the cloud. Every field is optional and only
+ * the ones present are written, so a partial payload cannot silently blank a
+ * section it did not carry.
+ */
+export interface WorkspaceImport {
+  profile?: Profile | null;
+  apps?: AppEntry[];
+  portfolio?: PortfolioEntry[];
+  exams?: ExamResults;
+  deadlines?: Deadline[];
+  checklist?: Record<string, boolean>;
+}
+
 interface Store {
   ready: boolean;
   onboarded: boolean;
@@ -82,6 +96,7 @@ interface Store {
   removeDeadline: (id: string) => void;
   checklist: Record<string, boolean>;
   toggleDoc: (id: string) => void;
+  importWorkspace: (w: WorkspaceImport) => void;
   toast: string | null;
 }
 
@@ -258,6 +273,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const importWorkspace = useCallback(
+    (w: WorkspaceImport) => {
+      if (w.profile !== undefined) {
+        setProfile(w.profile);
+        persist("ah.profile", w.profile);
+        // a restored profile means onboarding is behind us
+        if (w.profile) {
+          setOnboardedState(true);
+          persist("ah.onboarded", true);
+        }
+      }
+      if (w.apps) {
+        setApps(w.apps);
+        persist("ah.apps", w.apps);
+      }
+      if (w.portfolio) {
+        setPortfolio(w.portfolio);
+        persist("ah.portfolio", w.portfolio);
+      }
+      if (w.exams) {
+        setExams(w.exams);
+        persist("ah.exams", w.exams);
+      }
+      if (w.deadlines) {
+        setDeadlines(w.deadlines);
+        persist("ah.deadlines", w.deadlines);
+      }
+      if (w.checklist) {
+        setChecklist(w.checklist);
+        persist("ah.checklist", w.checklist);
+      }
+    },
+    [],
+  );
+
   const value = useMemo<Store>(
     () => ({
       ready,
@@ -281,9 +331,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeDeadline,
       checklist,
       toggleDoc,
+      importWorkspace,
       toast,
     }),
-    [ready, onboarded, setOnboarded, profile, saveProfile, clearProfile, apps, toggleShortlist, setTier, removeApp, portfolio, addPortfolio, removePortfolio, exams, saveExams, deadlines, addDeadline, removeDeadline, checklist, toggleDoc, toast],
+    [ready, onboarded, setOnboarded, profile, saveProfile, clearProfile, apps, toggleShortlist, setTier, removeApp, portfolio, addPortfolio, removePortfolio, exams, saveExams, deadlines, addDeadline, removeDeadline, checklist, toggleDoc, importWorkspace, toast],
   );
 
   return (

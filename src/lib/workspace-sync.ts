@@ -24,7 +24,14 @@ export interface SyncPayload {
     gpa?: string;
     gpa_scale?: string;
   } | null;
-  exams: Record<string, string>;
+  /**
+   * One entry per exam, keyed by exam id (`ielts` | `toefl` | `sat`). The
+   * section breakdown rides along, so an SAT round trip keeps ebrw/math and an
+   * IELTS round trip keeps L/R/W/S — the numbers a counselor actually checks an
+   * official report against. Dropping them would make the cloud copy quietly
+   * poorer than the local one.
+   */
+  exams: Record<string, { overall?: string; sections?: Record<string, string> }>;
   universities: { slug: string; tier: AhTier }[];
   deadlines: { title: string; date: string }[];
   portfolio: {
@@ -62,10 +69,15 @@ export async function pushWorkspace(payload: SyncPayload): Promise<SyncResult> {
       if (error) throw error;
     }
 
-    // exams: one row per exam id
+    // exams: one row per exam id, with its section breakdown
     const examRows = Object.entries(payload.exams)
-      .filter(([, v]) => v !== undefined && v !== "")
-      .map(([exam_id, overall]) => ({ user_id: id, exam_id, overall: String(overall) }));
+      .filter(([, v]) => v && (v.overall || Object.keys(v.sections ?? {}).length > 0))
+      .map(([exam_id, v]) => ({
+        user_id: id,
+        exam_id,
+        overall: v.overall ?? null,
+        sections: v.sections ?? {},
+      }));
     await sb.from(T.exams).delete().eq("user_id", id);
     if (examRows.length) {
       const { error } = await sb.from(T.exams).insert(examRows);
@@ -113,16 +125,15 @@ export async function pushWorkspace(payload: SyncPayload): Promise<SyncResult> {
   }
 }
 
-/** Download this user's workspace from the cloud. */
-export async function pullWorkspace(): Promise<SyncPayload | null> {
-  const sb = supabase();
-  if (!sb) return null;
-  const id = await uid();
-  if (!id) return null;
+const EXAM_COLS = "exam_id, overall, sections";
 
+const readWorkspace = async (
+  sb: NonNullable<ReturnType<typeof supabase>>,
+  id: string,
+): Promise<SyncPayload> => {
   const [profile, exams, unis, deadlines, portfolio, checklist] = await Promise.all([
     sb.from(T.profiles).select("*").eq("id", id).maybeSingle(),
-    sb.from(T.exams).select("exam_id, overall").eq("user_id", id),
+    sb.from(T.exams).select(EXAM_COLS).eq("user_id", id),
     sb.from(T.universities).select("university_slug, tier").eq("user_id", id),
     sb.from(T.deadlines).select("title, due_on").eq("user_id", id),
     sb.from(T.portfolio).select("kind, title, org, description, years, hours").eq("user_id", id),
@@ -141,7 +152,15 @@ export async function pullWorkspace(): Promise<SyncPayload | null> {
           gpa_scale: profile.data.gpa_scale ?? undefined,
         }
       : null,
-    exams: Object.fromEntries((exams.data ?? []).map((r) => [r.exam_id, r.overall ?? ""])),
+    exams: Object.fromEntries(
+      (exams.data ?? []).map((r) => [
+        r.exam_id,
+        {
+          overall: r.overall ?? undefined,
+          sections: (r.sections ?? {}) as Record<string, string>,
+        },
+      ]),
+    ),
     universities: (unis.data ?? []).map((r) => ({ slug: r.university_slug, tier: r.tier })),
     deadlines: (deadlines.data ?? []).map((r) => ({ title: r.title, date: r.due_on })),
     portfolio: (portfolio.data ?? []).map((r) => ({
@@ -154,6 +173,15 @@ export async function pullWorkspace(): Promise<SyncPayload | null> {
     })),
     checklist: Object.fromEntries((checklist.data ?? []).map((r) => [r.doc_key, r.done])),
   };
+};
+
+/** Download this user's workspace from the cloud. */
+export async function pullWorkspace(): Promise<SyncPayload | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  const id = await uid();
+  if (!id) return null;
+  return readWorkspace(sb, id);
 }
 
 /* ── counselor linking ──────────────────────────────────────────────────── */
@@ -202,7 +230,7 @@ export async function listLinkedStudents(): Promise<LinkedStudent[]> {
     linkId: l.id,
     studentId: l.student_id,
     email: l.student_email,
-    status: l.status,
+    status: l.status as LinkedStudent["status"],
     fullName: l.student_id ? names.get(l.student_id) ?? "" : "",
   }));
 }
@@ -211,41 +239,70 @@ export async function listLinkedStudents(): Promise<LinkedStudent[]> {
 export async function pullStudentWorkspace(studentId: string): Promise<SyncPayload | null> {
   const sb = supabase();
   if (!sb) return null;
+  return readWorkspace(sb, studentId);
+}
 
-  const [profile, exams, unis, deadlines, portfolio, checklist] = await Promise.all([
-    sb.from(T.profiles).select("*").eq("id", studentId).maybeSingle(),
-    sb.from(T.exams).select("exam_id, overall").eq("user_id", studentId),
-    sb.from(T.universities).select("university_slug, tier").eq("user_id", studentId),
-    sb.from(T.deadlines).select("title, due_on").eq("user_id", studentId),
-    sb.from(T.portfolio).select("kind, title, org, description, years, hours").eq("user_id", studentId),
-    sb.from(T.checklist).select("doc_key, done").eq("user_id", studentId),
-  ]);
+/* ── the student's side of a link ───────────────────────────────────────── */
 
-  return {
-    profile: profile.data
-      ? {
-          full_name: profile.data.full_name ?? undefined,
-          level: profile.data.level ?? undefined,
-          country: profile.data.country ?? undefined,
-          intake: profile.data.intake ?? undefined,
-          budget: profile.data.budget ?? undefined,
-          gpa: profile.data.gpa ?? undefined,
-          gpa_scale: profile.data.gpa_scale ?? undefined,
-        }
-      : null,
-    exams: Object.fromEntries((exams.data ?? []).map((r) => [r.exam_id, r.overall ?? ""])),
-    universities: (unis.data ?? []).map((r) => ({ slug: r.university_slug, tier: r.tier })),
-    deadlines: (deadlines.data ?? []).map((r) => ({ title: r.title, date: r.due_on })),
-    portfolio: (portfolio.data ?? []).map((r) => ({
-      kind: r.kind,
-      title: r.title,
-      org: r.org ?? undefined,
-      description: r.description ?? undefined,
-      years: r.years ?? undefined,
-      hours: r.hours ?? undefined,
-    })),
-    checklist: Object.fromEntries((checklist.data ?? []).map((r) => [r.doc_key, r.done])),
-  };
+export interface Invite {
+  linkId: string;
+  counselorId: string;
+  counselorName: string;
+  status: "pending" | "active" | "revoked";
+}
+
+/**
+ * Invites addressed to the signed-in student's email, and the counselors they
+ * have already accepted. RLS already restricts these rows to the caller's own
+ * email or id; the names come from the `ah_profiles_inviter_read` policy, which
+ * lets a student see exactly the counselors who invited them and no one else.
+ */
+export async function listMyInvites(): Promise<Invite[]> {
+  const sb = supabase();
+  if (!sb) return [];
+  const { data: auth } = await sb.auth.getUser();
+  const me = auth.user;
+  if (!me?.email) return [];
+
+  const { data: links } = await sb
+    .from(T.links)
+    .select("id, counselor_id, status")
+    .ilike("student_email", me.email);
+  if (!links?.length) return [];
+
+  const ids = [...new Set(links.map((l) => l.counselor_id))];
+  const names = new Map<string, string>();
+  if (ids.length) {
+    const { data: profs } = await sb.from(T.profiles).select("id, full_name").in("id", ids);
+    (profs ?? []).forEach((p) => names.set(p.id, p.full_name ?? ""));
+  }
+
+  return links
+    .filter((l) => l.status !== "revoked")
+    .map((l) => ({
+      linkId: l.id,
+      counselorId: l.counselor_id,
+      counselorName: names.get(l.counselor_id) || "a counselor",
+      status: l.status as Invite["status"],
+    }));
+}
+
+/** Accept or decline an invite. Consent is the student's to give and withdraw. */
+export async function respondToInvite(linkId: string, accept: boolean): Promise<SyncResult> {
+  const sb = supabase();
+  if (!sb) return { ok: false, error: "not configured" };
+  const { data: auth } = await sb.auth.getUser();
+  if (!auth.user) return { ok: false, error: "not signed in" };
+
+  const { error } = await sb
+    .from(T.links)
+    .update({
+      status: accept ? "active" : "revoked",
+      student_id: auth.user.id,
+      responded_at: new Date().toISOString(),
+    })
+    .eq("id", linkId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 export { isSupabaseConfigured };

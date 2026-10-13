@@ -11,9 +11,9 @@ import type { Database } from "./database.types";
  * not configured, and every call site treats that as "run locally only", so the
  * site never breaks because a backend is missing.
  *
- * Every table is `ah_`-prefixed, so the schema can live in `public` even when
- * this project shares a database with another app — no collision, no custom
- * schema wiring, and no per-query schema juggling.
+ * Every table is `ah_`-prefixed and every bucket `ah-`-prefixed, so the schema
+ * could live in `public` even in a database shared with another app — no
+ * collision, no custom schema wiring, and no per-query schema juggling.
  */
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,4 +48,8 @@ export const T = {
   links: "ah_counselor_links",
 } as const;
 
-export const BUCKET = { documents: "documents", reports: "score-reports" } as const;
+/** Storage buckets, also namespaced. Paths are `{bucket}/{user_id}/{file}`. */
+export const BUCKET = {
+  documents: "ah-documents",
+  reports: "ah-score-reports",
+} as const;

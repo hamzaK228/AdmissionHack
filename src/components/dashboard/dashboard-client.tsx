@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore, type Profile, type PortfolioEntry, type PortfolioKind, type Tier } from "@/components/dashboard/store";
 import { MatchTab } from "@/components/dashboard/match-tab";
 import { ScoreReportUpload } from "@/components/dashboard/score-report-upload";
+import { CloudSync } from "@/components/dashboard/cloud-sync";
 import { AuthPanel } from "@/components/account/auth-panel";
 import { CounselorView } from "@/components/account/counselor-view";
 import { motion, AnimatePresence } from "motion/react";
@@ -914,7 +915,12 @@ export function DashboardClient({
         )}
         {tab === "exams" && <ExamsTab ieltsMinimums={ieltsMinimums} />}
         {tab === "portfolio" && <PortfolioTab />}
-        {tab === "who" && <AuthPanel />}
+        {tab === "who" && (
+          <div className="space-y-8">
+            <AuthPanel />
+            <CloudSync />
+          </div>
+        )}
         {tab === "counselor" && <CounselorView />}
         {tab === "profile" && (
           <div className="max-w-2xl">
