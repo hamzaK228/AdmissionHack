@@ -3,6 +3,17 @@ import type { ReactNode } from "react";
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (
+    <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-dim">
+      <span className="text-lime/70">[ </span>
+      <span className="text-lime">{children}</span>
+      <span className="text-lime/70"> ]</span>
+    </p>
+  );
+}
+
+/** The terminal `> command` label, kept for places that are literally commands. */
+export function Prompt({ children }: { children: ReactNode }) {
+  return (
     <p className="text-xs font-bold uppercase tracking-[0.22em] text-lime">
       <span className="text-lime/60">&gt; </span>
       {children}
@@ -26,7 +37,7 @@ export function PageHero({
       {/* scroll-linked: drifts and fades as you leave the hero */}
       <div className="hero-copy relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="headline-gradient mt-5 max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
+        <h1 className="headline-gradient mt-6 max-w-4xl text-5xl font-bold leading-[1.03] tracking-tight sm:text-7xl">
           {title}
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-fog">{description}</p>
@@ -48,11 +59,13 @@ export function SectionHeading({
   description?: string;
 }) {
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h2 className="mt-3 text-2xl font-bold tracking-tight text-paper sm:text-3xl">{title}</h2>
+      <h2 className="headline-gradient mt-5 text-4xl font-bold leading-[1.02] tracking-tight sm:text-6xl">
+        {title}
+      </h2>
       {description ? (
-        <p className="mt-3 text-sm leading-relaxed text-fog sm:text-base">{description}</p>
+        <p className="mt-6 max-w-2xl text-base leading-relaxed text-fog">{description}</p>
       ) : null}
     </div>
   );

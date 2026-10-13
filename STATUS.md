@@ -20,6 +20,36 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Full design pass (Sept 27, 2026) — after installing the motion skill
+
+Audited the code against the Motion skill's rules first: **clean** — no `framer-motion` imports,
+no MotionValue read in render, `willChange` used instead of `translateZ(0)`, `MotionConfig
+reducedMotion="user"` at the root, `layout` animations on the directory grid, 9 `AnimatePresence`
+usages.
+
+Then the design itself. Three real problems found by looking, not guessing:
+
+1. **The design language broke after the filmstrip.** The filmstrip used `[ STEP 01 ]` brackets;
+   every other section used a different `> EYEBROW` at a fraction of the size, so the page
+   collapsed from 7xl titles to small h2s. Fixed the shared `Eyebrow`/`SectionHeading` so the
+   bracket style and the large gradient heading apply **site-wide** (`> Prompt` kept as a separate
+   variant for places that are literally terminal commands). Page heroes went from 5xl to 7xl.
+2. **The statement line was missing.** The reference screencast had a big centred manifesto with
+   one accent-coloured word. Added `[ WHY THIS EXISTS ]` -> "Admission rewards the people who
+   **knew the system**." with the accent in lime.
+3. **Dead space.** The modules were a flat 2-column card grid (wide, short, empty) and the roadmap
+   was four small dashed boxes floating in a dark void. Modules are now an editorial index —
+   `01 / title / description / $ command ->` rows with hairline dividers — and the roadmap is a
+   single divided strip. Also fixed the heading, which claimed **"Four modules"** while rendering six.
+
+Verified: detector clean, no horizontal overflow on any page checked, mobile headings scale
+72px -> 48px cleanly.
+
+**A note on method:** while checking the filmstrip I measured an alignment bug and nearly "fixed"
+working code — the math was right and my measurement used `offsetTop` (relative to a positioned
+wrapper) instead of `getBoundingClientRect()`. Re-measured correctly: `jp` reaches exactly 1.0 and
+the last panel centres at `offBy: 0`. Recording it because the failure mode is easy to repeat.
+
 ## Weight reduction + transitions (Sept 27, 2026)
 
 **Size.** Project itself is 735MB (node_modules 469M + .next 263M), both regenerable and

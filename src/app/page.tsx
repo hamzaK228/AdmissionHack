@@ -167,44 +167,112 @@ export default function HomePage() {
       {/* ── Journey: stepped scroll narrative ── */}
       <JourneyScroller />
 
-      {/* ── Modules ── */}
-      <section className="border-y border-line/70 bg-panel/40">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+
+      {/* ── manifesto: the reference's statement line, one accented word ── */}
+      <section className="relative overflow-hidden border-y border-line px-4 py-28 sm:px-6 sm:py-40">
+        <span aria-hidden className="ghost-number left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[26vw]">
+          ★
+        </span>
+        <div className="relative mx-auto max-w-4xl text-center">
           <Reveal>
-            <SectionHeading
-              eyebrow="the ecosystem"
-              title="Four modules, live today"
-              description="The tracker, vault, community and AI advisor are compiling on top of this foundation."
-            />
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-dim">
+              <span className="text-lime/70">[ </span>
+              <span className="text-lime">why this exists</span>
+              <span className="text-lime/70"> ]</span>
+            </p>
           </Reveal>
-          <div className="mt-12 grid gap-4 sm:grid-cols-2">
-            {modules.map((m, i) => (
-              <Reveal key={m.href} delay={i * 50}>
-                <CtaCard href={m.href} title={`$ ${m.cmd} — ${m.title}`} description={m.description} cta="open" />
-              </Reveal>
-            ))}
-          </div>
+          <Reveal delay={90}>
+            <h2 className="mt-8 text-4xl font-bold leading-[1.06] tracking-tight text-paper sm:text-7xl">
+              Admission rewards the people
+              <br className="hidden sm:block" /> who <span className="text-lime">knew the system</span>.
+            </h2>
+          </Reveal>
+          <Reveal delay={180}>
+            <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-fog">
+              Not the richest, not the luckiest — the ones with the information. That advantage
+              shouldn&apos;t cost $5,000 and a consultant. So we put it here, free, for every
+              applicant on Earth.
+            </p>
+          </Reveal>
+          <Reveal delay={260}>
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/how-admission-works"
+                className="anim-glow w-full rounded-xl bg-lime px-7 py-3.5 text-center text-sm font-bold text-ink press-grow sm:w-auto"
+              >
+                read the system →
+              </Link>
+              <Link
+                href="/dashboard"
+                className="w-full rounded-xl border border-line2 bg-panel/60 px-7 py-3.5 text-center text-sm font-bold text-paper transition-colors hover:border-lime/50 hover:text-lime sm:w-auto"
+              >
+                build my workspace
+              </Link>
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* ── Compiling next ── */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <Reveal>
-          <SectionHeading eyebrow="roadmap" title="Compiling next" />
-        </Reveal>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {upcoming.map((item, i) => (
-            <Reveal key={item.title} delay={i * 45}>
-              <div className="group h-full rounded-xl border border-dashed border-line2 bg-panel/40 p-5 transition-colors hover:border-lime/40">
-                <p className="text-sm font-bold text-paper">$ {item.title}</p>
-                <p className="mt-2 text-xs leading-relaxed text-dim">{item.desc}</p>
-                <p className="mt-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-lime/70">
-                  <span className="anim-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-lime" />
-                  in development
+      {/* ── Modules: editorial rows, not a card grid ── */}
+      <section className="border-b border-line/70 bg-panel/40">
+        <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-28">
+          <Reveal>
+            <SectionHeading
+              eyebrow="the ecosystem"
+              title="Six modules, live today"
+              description="Everything below is built and free — the tracker, vault and AI advisor are compiling on top of it."
+            />
+          </Reveal>
+          <ol className="mt-14 border-t border-line">
+            {modules.map((m, i) => (
+              <li key={m.href}>
+                <Link
+                  href={m.href}
+                  className="group grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-2 border-b border-line py-7 transition-colors sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-x-10"
+                >
+                  <span className="font-mono text-xs font-bold tabular-nums text-dim">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight text-paper transition-colors group-hover:text-lime sm:text-2xl">
+                      {m.title}
+                    </h3>
+                    <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-fog">
+                      {m.description}
+                    </p>
+                  </div>
+                  <span className="col-start-2 font-mono text-xs text-dim transition-colors group-hover:text-lime sm:col-start-3">
+                    $ {m.cmd.replace(/^\$ /, "")} <span aria-hidden>→</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* ── Compiling next: a compact strip, not four boxes in a void ── */}
+      <section className="border-b border-line/70">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
+          <Reveal>
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <SectionHeading eyebrow="roadmap" title="Compiling next" />
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-lime/80">
+                <span className="anim-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-lime" />
+                in development
+              </p>
+            </div>
+          </Reveal>
+          <ul className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+            {upcoming.map((item) => (
+              <li key={item.title} className="bg-ink p-6">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-lime">
+                  $ {item.title}
                 </p>
-              </div>
-            </Reveal>
-          ))}
+                <p className="mt-3 text-sm leading-relaxed text-fog">{item.desc}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </>
