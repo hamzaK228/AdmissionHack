@@ -6,6 +6,7 @@ import { useStore, type Profile, type PortfolioEntry, type PortfolioKind, type T
 import { MatchTab } from "@/components/dashboard/match-tab";
 import { ScoreReportUpload } from "@/components/dashboard/score-report-upload";
 import { CloudSync } from "@/components/dashboard/cloud-sync";
+import { PracticeHistory } from "@/components/practice/practice-history";
 import { AuthPanel } from "@/components/account/auth-panel";
 import { CounselorView } from "@/components/account/counselor-view";
 import { motion, AnimatePresence } from "motion/react";
@@ -395,6 +396,8 @@ function ExamsTab({ ieltsMinimums }: { ieltsMinimums: { destination: string; sco
           )}
         </div>
       </div>
+
+      <PracticeHistory />
     </div>
   );
 }

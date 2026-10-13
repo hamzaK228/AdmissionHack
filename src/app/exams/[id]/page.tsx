@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { exams, examById } from "@/data/exams";
+import { hasPractice } from "@/data/practice";
 import { universities } from "@/data/all";
 import { FactCard, DataNotice, Eyebrow } from "@/components/ui";
 import { Reveal } from "@/components/reveal";
@@ -128,10 +129,27 @@ export default async function ExamPage({ params }: { params: Promise<{ id: strin
 
           <div className="rounded-2xl border border-lime/25 bg-lime/[0.06] p-6">
             <Eyebrow>prep hub</Eyebrow>
-            <p className="mt-3 text-sm leading-relaxed text-fog">
-              A dedicated prep hub for this exam — lessons, practice questions, mock tests — is on
-              the build roadmap. This guide is its foundation.
-            </p>
+            {hasPractice(exam.id) ? (
+              <>
+                <p className="mt-3 text-sm leading-relaxed text-fog">
+                  A practice set is ready: original questions in this exam&rsquo;s format, with an
+                  explanation for every answer, marked as you go so you learn from the ones you get
+                  wrong.
+                </p>
+                <Link
+                  href={`/exams/${exam.id}/practice`}
+                  className="anim-glow mt-4 inline-block rounded-lg bg-lime px-5 py-2.5 text-sm font-bold text-ink press-grow"
+                >
+                  start practising →
+                </Link>
+              </>
+            ) : (
+              <p className="mt-3 text-sm leading-relaxed text-fog">
+                The practice engine is built and the first set is live for the SAT. This exam&rsquo;s
+                own question bank is the next piece of content — until it lands, this guide is the
+                hub.
+              </p>
+            )}
           </div>
 
           <a
