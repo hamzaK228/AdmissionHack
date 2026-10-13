@@ -650,6 +650,33 @@ from `docs/exam-hub-blueprint.md` is now real, with its first content.
 - The card says plainly that the **accounts are separate** and nothing is carried between the sites.
   This is a hand-off, not single sign-on, and implying otherwise would be the easy lie.
 
+## The timeline — Pillar 2's "when" (2026-10-13)
+
+The deadlines tab was a flat list the student had to fill in themselves. The dashboard already
+knew enough to derive it, so it now does.
+
+- **The offsets became data.** `journeySteps` carried its timing as prose ("take exams 8–12 months
+  before enrollment"). Each step now also carries `offset: { from, minMonths, maxMonths }` — the
+  prose stays for humans, `src/lib/roadmap.ts` does the arithmetic, and a step with no usable offset
+  gets **no** window rather than an invented one. The two window-less phases show their curated
+  sentence instead.
+- **Two anchors, both the student's own:** their intake month (`profile.intake`, "Fall 2027" →
+  September 2027) and their earliest tracked deadline. With no deadline tracked, the fallback is a
+  typical Dec–Feb window, **and the card says so** rather than implying it is theirs.
+- **Status is never assumed.** It is derived from data the dashboard already holds — scores ticked
+  in exams, documents ticked in the checklist, the university list, tracked deadlines — and every
+  card carries an evidence line naming the data it used. A phase that cannot be observed says
+  "later" instead of pretending.
+- **A closed window outranks "in progress".** If the latest sensible month has passed and the phase
+  is unfinished it reads **BEHIND**, while still reporting how much is done ("2/6 core documents
+  ticked"). Flattering the student here would defeat the point of a plan.
+- **It writes into the existing deadline list**, so the timeline and the deadline radar are one list
+  rather than two that drift. "Track all" adds the window-end date for each unfinished phase.
+- Verified by 30 assertions over the date maths and status rules (run directly under Node's type
+  stripping — no test dependency added) plus a real browser run: eight phases rendered, statuses
+  correct for a seeded mid-process student, and "track all 3" wrote exactly three deadlines while
+  leaving the existing one untouched.
+
 ## One login across both products (2026-10-13 — DONE and verified)
 
 Both SAThack and AdmissionHack now authenticate against the **sathack** project
