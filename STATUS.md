@@ -650,6 +650,61 @@ from `docs/exam-hub-blueprint.md` is now real, with its first content.
 - The card says plainly that the **accounts are separate** and nothing is carried between the sites.
   This is a hand-off, not single sign-on, and implying otherwise would be the easy lie.
 
+## The college list IS the application tracker (2026-10-13)
+
+Pillar 5's core. Two things share one key — the tier is how the student balances risk, the status is
+how far each application has got — and both hang off (student, university), so they live on one
+screen rather than making the student maintain the same list twice.
+
+- **The tier move was already built and invisible.** Three single-letter chips ("🏆 D", "🎯 T",
+  "🛡️ S") per card did the job; they read as decoration. Each card now says "move to Target" and
+  shows the current column as a marked, disabled chip, and the card glides between columns on a
+  shared `layoutId` so the move lands visually (instantly under `reducedMotion="user"`).
+- **Every application has a life:** planning · preparing · submitted · waitlisted · offer ·
+  rejected · enrolled. `src/lib/applications.ts` holds the one vocabulary, because four things have
+  to agree on it: this module, the UI, the database CHECK, and the sync.
+- **Dates are stamped, never typed.** Moving to `submitted` stamps a submission date; an outcome
+  stamps a decision date and keeps the submission one. Moving back clears the stamp, so a mis-tap
+  cannot leave a phantom submission date behind. A list saved before the tracker existed reads as
+  "planning", so nobody's workspace breaks.
+- **The header summarises it** ("6 on your list · 2 still need you · 3 submitted · 1 offer") and each
+  column shows its count against the recommended spread, so an unbalanced list is visible.
+- **The counselor sees the status and both dates.** The payload already carried them; only the
+  rendering was missing them. Visibility is the point of the consent model, so it is not optional.
+
+### The one thing to paste (and why the app works before you do)
+
+`supabase/migrations/0003_application_tracker.sql` — additive, guarded, idempotent, ~40 lines. Run it
+in the **sathack** project's SQL editor like the ecosystem migration.
+
+The tracker works without it, because the workspace is local-first. What the migration adds is the
+**cloud mirror** of the statuses. And it must be applied before the sync carries them, for a specific
+reason: `pushWorkspace` replaces a student's list with a **delete-then-insert**, so writing a column
+the database does not have would fail the insert *after* the delete had run — silently emptying that
+list in the cloud. So the tracker fields ride along only when a probe confirms the columns exist, and
+the probe runs **before** the delete rather than after. Without them the list still syncs, just
+without statuses.
+
+The probe was verified against the live database rather than reasoned about: an unknown column returns
+`400` with code `42703`, and `select=status` returns exactly that today — so the deployed app is
+correctly omitting the tracker fields right now. Only a positive probe is cached, so a transient
+network failure retries instead of disabling the tracker for the session. Reading is defensive too:
+two literal selects rather than a column-list variable (PostgREST infers the row type from the string,
+so a variable defeats it), falling back to the pre-tracker columns, because a failed read would look
+like an empty list.
+
+**After applying the migration, regenerate `src/lib/database.types.ts`**: its three new columns were
+hand-added so the code typechecks before the database had them, and a real regeneration should
+replace that guess.
+
+Verified: 24 assertions over the lifecycle, the stamping rules and the summary; the college list
+driven in a real browser (moved ETH Zurich Dream → Target, confirmed in the store and the rendered
+columns; set it to submitted and watched the date get stamped; then to offer and confirmed the
+submission date was kept and a decision date added; moved another card while it held a status to prove
+the move preserves it). tsc, eslint and a 1,554-page build pass; the three eslint errors in
+`counselor-view.tsx` and the two in `dashboard-client.tsx`/`store.tsx` all pre-date this change, which
+was confirmed by linting with the change stashed.
+
 ## The timeline — Pillar 2's "when" (2026-10-13)
 
 The deadlines tab was a flat list the student had to fill in themselves. The dashboard already
