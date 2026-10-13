@@ -1,4 +1,8 @@
-import qsData from "./ranking-qs.json";
+import compact from "./globe-points.json";
+
+/** unis[0] = QS rank · unis[1] = name · unis[2] = index into countries[] */
+const unis = compact.p as [number, string, number][];
+const countryNames = compact.c as string[];
 
 /** Approximate country centroids [lat, lng] for every country in the QS list. */
 export const COUNTRY_COORDS: Record<string, [number, number]> = {
@@ -135,34 +139,35 @@ function hash(s: string): number {
  */
 export function globePoints(): GlobePoint[] {
   const counts: Record<string, number> = {};
-  for (const e of qsData as { country: string }[]) {
-    counts[e.country] = (counts[e.country] ?? 0) + 1;
+  for (const u of unis) {
+    const c = countryNames[u[2]];
+    counts[c] = (counts[c] ?? 0) + 1;
   }
   const max = Math.max(...Object.values(counts), 1);
 
-  return (qsData as { name: string; country: string; rank: string }[]).flatMap((e) => {
-    const base = COUNTRY_COORDS[e.country];
+  return unis.flatMap(([rank, name, ci]) => {
+    const country = countryNames[ci];
+    const base = COUNTRY_COORDS[country];
     if (!base) return [];
-    const rank = parseInt(e.rank.replace(/[=+\s]/g, ""), 10);
-    if (!Number.isFinite(rank)) return [];
 
     // spread grows with country size, capped so big countries stay legible
-    const spread = 1.5 + Math.sqrt(counts[e.country] / max) * 13;
-    const a = hash(e.name) * Math.PI * 2;
-    const r = Math.sqrt(hash(e.name + "r")) * spread;
+    const spread = 1.5 + Math.sqrt(counts[country] / max) * 13;
+    const a = hash(name) * Math.PI * 2;
+    const r = Math.sqrt(hash(name + "r")) * spread;
     // longitude degrees shrink with latitude; guard against poles
     const lat = Math.max(-83, Math.min(83, base[0] + r * Math.sin(a) * 0.62));
     const lngScale = Math.max(0.25, Math.cos((base[0] * Math.PI) / 180));
     const lng = base[1] + (r * Math.cos(a)) / lngScale;
 
-    return [{ lat, lng: ((lng + 540) % 360) - 180, name: e.name, country: e.country, rank }];
+    return [{ lat, lng: ((lng + 540) % 360) - 180, name, country, rank }];
   });
 }
 
 export function countryStats() {
   const counts: Record<string, number> = {};
-  for (const e of qsData as { country: string }[]) {
-    counts[e.country] = (counts[e.country] ?? 0) + 1;
+  for (const u of unis) {
+    const c = countryNames[u[2]];
+    counts[c] = (counts[c] ?? 0) + 1;
   }
   return Object.entries(counts)
     .map(([country, count]) => ({ country, count, coords: COUNTRY_COORDS[country] }))

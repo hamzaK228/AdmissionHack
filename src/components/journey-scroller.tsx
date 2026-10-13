@@ -109,7 +109,7 @@ export function JourneyScroller() {
                   {String(step.order).padStart(2, "0")}
                 </span>
 
-                <div className="relative z-10 grid w-full max-w-6xl gap-8 px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
+                <div className="panel-inner relative z-10 grid w-full max-w-6xl gap-8 px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-dim">
                       [ step {String(step.order).padStart(2, "0")} ]

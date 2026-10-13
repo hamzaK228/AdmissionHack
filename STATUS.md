@@ -20,6 +20,36 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Weight reduction + transitions (Sept 27, 2026)
+
+**Size.** Project itself is 735MB (node_modules 469M + .next 263M), both regenerable and
+gitignored. The real GB were outside it:
+
+| Target | Before | After | Note |
+|---|---|---|---|
+| `~/.npm` cache | 2.8 GB | 667 MB | regenerable, cleared with `npm cache clean --force` |
+| my session screenshots (`~/.zcode/cli/artifacts`) | 287 MB | 195 MB | 288 PNGs from this session, deleted |
+| `/tmp` working files | ~180 MB | 0 | scaffold, land data, frame dumps |
+
+Not touched (the user's own tooling, not mine to delete): `~/.cache/uv` **11 GB**,
+`~/.cache/codex-runtimes` 1.7 GB, `~/.cache/huggingface` 454 MB, `~/.cache/pnpm` 358 MB.
+
+**Client payload.** `src/data/geo.ts` (imported by the globe, a client component) was pulling
+the full 170 KB QS JSON — shipping city, region and repeated country strings to every visitor.
+Generated `src/data/globe-points.json` instead: country names deduped into a 106-entry table,
+ranks as integers, dead fields dropped. **170 KB -> 62 KB raw / 29.4 KB -> 19.5 KB gzipped
+(-64%)**. Also dropped `website` and `city` from the dashboard's client index — both were
+never read and `website` meant shipping 1,504 URLs.
+
+**Transitions.**
+
+- **Route changes** (`src/app/template.tsx`): a 340ms blur-masked crossfade. Blur is doing real
+  work here — Next swaps the page instantly, so without it you see two layouts overlap; the blur
+  blends them into one perceived motion. Skipped entirely under reduced motion.
+- **Filmstrip panels**: a panel's content rises out of a 3px blur and sharpens as its panel
+  becomes active, dimming to 0.28 as it leaves — so the strip reads as staged, not as text
+  sliding past. Verified: active panel opacity 1, neighbours 0.28.
+
 ## Horizontal filmstrip — the reference's signature motion (Sept 27, 2026)
 
 The user supplied a **screencast** of weevolveit.com. Video input is not available to the

@@ -17,13 +17,11 @@ export default function DashboardPage() {
       slug: u.slug,
       name: u.name,
       countryName: u.countryName,
-      city: u.city,
       qsRank: u.qsRank ?? null,
       arwuRank: u.arwuRank ?? null,
       selectivity: u.selectivity,
       tuitionMin: u.tuitionUsdPerYear?.min ?? null,
       tuitionMax: u.tuitionUsdPerYear?.max ?? null,
-      website: u.website,
     };
   }
   const ielts = exams.find((e) => e.id === "ielts")?.typicalMinimums ?? [];

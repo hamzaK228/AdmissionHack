@@ -395,6 +395,51 @@ body {
   }
 }
 
+
+/* ── Filmstrip panel transitions ─────────────────────────────────────
+   A panel's content rises and sharpens as its panel becomes the active one,
+   and dims slightly as it leaves — so the filmstrip reads as staged rather
+   than as text sliding past. Driven by the aria-current attribute the
+   scroll listener already maintains.
+   ------------------------------------------------------------------ */
+.journey-panel .panel-inner {
+  opacity: 0.28;
+  transform: translateY(18px);
+  filter: blur(3px);
+  transition:
+    opacity 460ms var(--ease-out),
+    transform 520ms var(--ease-out),
+    filter 460ms var(--ease-out);
+}
+.journey-panel[aria-current="true"] .panel-inner {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* the ghost numeral settles slightly slower than the content */
+.journey-panel .ghost-number {
+  transition: opacity 600ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-panel .panel-inner {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}
+
+/* mobile stacking: every panel is always "in view" */
+@media (max-width: 1023px) {
+  .journey-panel .panel-inner {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
 /* ── Scroll choreography ─────────────────────────────────────────────
    Driven by CSS variables published by <ScrollDriver> from a passive
    scroll listener (no animation-frame loop, so it survives throttling).

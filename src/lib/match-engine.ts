@@ -5,13 +5,11 @@ export interface SlimUni {
   slug: string;
   name: string;
   countryName: string;
-  city: string;
   qsRank: number | null;
   arwuRank?: number | string | null;
   selectivity: string;
   tuitionMin: number | null;
   tuitionMax: number | null;
-  website: string;
 }
 
 export interface MatchReason {
