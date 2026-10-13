@@ -526,6 +526,38 @@ Project **`admissionhack`** (`nkqjlccomtcqwsawbndp`) in the **AdmissionHack** or
   `official reports → sat.pdf · sat · verified → open ↗ / unverify`; the student's exams tab renders
   `official SAT report · 1 file on record · ✓ verified by a counselor`.
 
+## Where this stops (2026-10-13)
+
+Everything that can be finished without you is finished.
+
+- `npm run build` clean, ~1,550 pages. `npx tsc --noEmit` clean. All 13 routes return 200.
+- `node supabase/verify-backend.mjs` — **39/39**, through the real API with real JWTs.
+- The dashboard hydrates with all ten tabs and no page errors; mobile at 390×844 has no horizontal
+  overflow.
+- **README rewritten.** It was still untouched `create-next-app` scaffolding claiming port 3000, so
+  the repository now has a real front door: what it is, the honest status, how to run it, that the
+  backend is optional, and how to run the security suite.
+- `NEXT_PUBLIC_SITE_URL` is now the single knob for the site's own origin, instead of a placeholder
+  hard-coded in `sitemap.ts`.
+
+**Waiting on you, and only you:**
+
+1. **Publish.** Nothing is on GitHub: `gh` is not authenticated on this machine, and that needs your
+   browser. `./push-to-github.sh` handles the login and the push.
+2. **Turn off "Confirm email"** (Authentication → Email), or configure SMTP. Until then `signUp()`
+   hits the default mailer's rate limit and no real account can finish signing up.
+3. **Delete the throwaway accounts** (`student@example.com`, `counselor@example.com`, password
+   `TestPassword123!`) before real use. They exist so `verify-backend.mjs` can run, and they
+   currently hold demo data — a workspace, a group membership and a verified report.
+4. **Decide about the paused project.** The Supabase slot was freed by pausing one of your other
+   projects, and it stays paused while three are active.
+
+**What remains is the product, not loose ends.** Pillar 3 (exam-prep academy and the Writing School
+— where your SAT site plugs in), Pillar 6 (visa and arrival), Pillar 7 (community and mentorship),
+Pillar 8 (AI advisor). That is the bulk of the roadmap in PLAN.md. Two practical ceilings to keep in
+mind: the free plan gives 1 GB of storage, which student documents will eventually exhaust, and the
+site is not deployed anywhere yet.
+
 ## Document folders and counselor groups (2026-10-13)
 
 Migration `0002_document_folders_and_groups.sql`, applied to the live project.
