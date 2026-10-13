@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore, type Profile, type PortfolioEntry, type PortfolioKind, type Tier } from "@/components/dashboard/store";
 import { MatchTab } from "@/components/dashboard/match-tab";
+import { ScoreReportUpload } from "@/components/dashboard/score-report-upload";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
@@ -449,12 +450,16 @@ function ExamsTab({ ieltsMinimums }: { ieltsMinimums: { destination: string; sco
               </div>
             </div>
           </div>
-          <button type="submit" className="anim-glow rounded-lg bg-lime px-5 py-2.5 text-sm font-bold text-ink">
+          <button type="submit" className="anim-glow rounded-lg bg-lime px-5 py-2.5 text-sm font-bold text-ink press-grow">
             save results ✓
           </button>
         </form>
 
         <div className="space-y-4">
+          <ScoreReportUpload examId="ielts" examName="IELTS" />
+          <ScoreReportUpload examId="toefl" examName="TOEFL" />
+          <ScoreReportUpload examId="sat" examName="SAT" />
+
           {overall > 0 && (
             <div className="rounded-2xl border border-lime/25 bg-lime/[0.06] p-5">
               <Eyebrow>ielts {overall.toFixed(1)} — destination check</Eyebrow>

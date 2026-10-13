@@ -20,6 +20,47 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Accounts + database (started, blocked on infrastructure)
+
+The user asked for real accounts, an official-score-report upload, and a counselor who can see many
+students' workspaces.
+
+**Blocked, and it is not a code problem.** Supabase's free plan allows **2 active projects**; the
+org has three, and the two slots are held by the user's *active* projects:
+
+| Project | Status | Counts |
+|---|---|---|
+| `ii-na-praktike` | ACTIVE | yes |
+| `sathack` (their SAT site) | ACTIVE | yes |
+| `hamzaK228's Project` | INACTIVE since July | no — already paused |
+
+So the idle project frees nothing. Creating a third is refused until one of the two *active*
+projects is paused/deleted or the plan is upgraded — none of which is mine to do.
+**Zero-destruction alternative offered:** apply the migration into a dedicated `admissionhack`
+Postgres schema inside a project they already have (separate tables + RLS + storage policies, shared
+auth = one login across both apps). The same migration file moves to a dedicated project unchanged
+later. Awaiting their pick of which project hosts it.
+
+**Written and ready:**
+
+- **`supabase/migrations/0001_admissionhack_schema.sql`** — portable migration. 9 tables
+  (`ah_profiles`, `ah_exam_results`, `ah_score_reports`, `ah_university_lists`, `ah_deadlines`,
+  `ah_portfolio`, `ah_documents`, `ah_checklist`, `ah_counselor_links`), roles
+  (student | counselor | parent), tiers (dream | target | safe).
+  **Security is the point of this schema:** it will hold passports, transcripts, official score
+  reports and family financial documents, so every table is deny-by-default via RLS and a row is
+  visible only to its owner plus a counselor with an **accepted** link
+  (`ah_is_counselor_of()` as SECURITY DEFINER so the policy can read the link table without
+  recursing through its own RLS). Storage: two **private** buckets,
+  `documents/{user_id}/…` and `score-reports/{user_id}/…`, owner write, counselor read for linked
+  students. Plus a signup trigger that creates the profile and attaches pending invites.
+
+- **Score report upload — built and working today.** `score-report-upload.tsx` + `doc-vault.ts`
+  gain a `kind`/`examId` so official reports are first-class: three blocks (IELTS / TOEFL / SAT) in
+  the exams tab, drag-drop or picker, download/delete, files never leaving the device. Verified in
+  the browser (3 file inputs, 3 labelled blocks). Stored in IndexedDB now; the component moves to
+  Supabase Storage unchanged because the path convention is already `{user_id}/{exam_id}/{file}`.
+
 ## Scroll-scrubbed text (anime.js) (Sept 27, 2026)
 
 Added the reference's signature text motion: statement/heading words reveal

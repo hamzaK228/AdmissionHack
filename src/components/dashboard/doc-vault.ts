@@ -14,6 +14,10 @@ export interface StoredFile {
   type: string;
   size: number;
   addedAt: string;
+  /** "vault" for general documents, "score-report" for official exam reports */
+  kind?: "vault" | "score-report";
+  /** for score reports: which exam it belongs to (ielts | toefl | sat) */
+  examId?: string;
   blob: Blob;
 }
 
@@ -30,7 +34,10 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function addFiles(files: FileList | File[]): Promise<number> {
+export async function addFiles(
+  files: FileList | File[],
+  meta: { kind?: StoredFile["kind"]; examId?: string } = {},
+): Promise<number> {
   const db = await openDB();
   const tx = db.transaction(STORE, "readwrite");
   const store = tx.objectStore(STORE);
@@ -42,6 +49,8 @@ export async function addFiles(files: FileList | File[]): Promise<number> {
       type: file.type || "application/octet-stream",
       size: file.size,
       addedAt: new Date().toISOString(),
+      kind: meta.kind ?? "vault",
+      ...(meta.examId ? { examId: meta.examId } : {}),
       blob: file,
     };
     store.put(record);
@@ -76,6 +85,12 @@ export async function deleteFile(id: string): Promise<void> {
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+}
+
+/** Files belonging to one exam (score reports). */
+export async function filesForExam(examId: string): Promise<StoredFile[]> {
+  const all = await getAllFiles();
+  return all.filter((f) => f.kind === "score-report" && f.examId === examId);
 }
 
 export function downloadStoredFile(f: StoredFile) {
