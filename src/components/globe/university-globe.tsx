@@ -74,6 +74,23 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
     let size = { w: 0, h: 0 };
     let dpr = 1;
 
+    /* Halo sprite, rendered once. Creating a radial gradient per country per
+       frame was ~106 gradient allocations every frame; drawing a cached sprite
+       is a single drawImage call each. */
+    const HALO_PX = 128;
+    const haloSprite = document.createElement("canvas");
+    haloSprite.width = HALO_PX;
+    haloSprite.height = HALO_PX;
+    {
+      const hc = haloSprite.getContext("2d")!;
+      const hg = hc.createRadialGradient(HALO_PX / 2, HALO_PX / 2, 0, HALO_PX / 2, HALO_PX / 2, HALO_PX / 2);
+      hg.addColorStop(0, "rgba(201,255,74,0.55)");
+      hg.addColorStop(0.55, "rgba(201,255,74,0.14)");
+      hg.addColorStop(1, "rgba(201,255,74,0)");
+      hc.fillStyle = hg;
+      hc.fillRect(0, 0, HALO_PX, HALO_PX);
+    }
+
     const resize = () => {
       const rect = wrap.getBoundingClientRect();
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -145,36 +162,49 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       ctx.fillStyle = "rgba(238,246,236,0.88)";
       ctx.fill(landPath);
 
-      // density glow where higher education concentrates
-      for (const c of countries) {
-        const p = project(c.coords![0], c.coords![1], cx, cy, R);
-        if (!p) continue;
+      // density glow where higher education concentrates — cached sprite, no allocation
+      for (let i = 0; i < countries.length; i++) {
+        const c = countries[i];
+        const la = c.coords![0] * DEG;
+        const lo = c.coords![1] * DEG + rotRef.current;
+        const vx = Math.cos(la) * Math.cos(lo);
+        const vy = Math.sin(la);
+        const vz = Math.cos(la) * Math.sin(lo);
+        const y2 = vy * cosT - vz * sinT;
+        const z2 = vy * sinT + vz * cosT;
+        if (z2 <= 0.03) continue;
         const weight = c.count / maxCount;
         const rad = R * 0.05 + weight * R * 0.3;
-        const hg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
-        hg.addColorStop(0, "rgba(201,255,74," + (0.1 + weight * 0.16) + ")");
-        hg.addColorStop(1, "rgba(201,255,74,0)");
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
-        ctx.fillStyle = hg;
-        ctx.fill();
+        ctx.globalAlpha = 0.35 + weight * 0.5;
+        ctx.drawImage(haloSprite, cx + vx * R - rad, cy - y2 * R - rad, rad * 2, rad * 2);
       }
+      ctx.globalAlpha = 1;
 
-      // universities on top, in lime
-      for (const pt of points) {
-        const p = project(pt.lat, pt.lng, cx, cy, R);
-        if (!p) continue;
+      // universities on top, in lime — projection inlined so the per-frame loop
+      // allocates nothing (this runs 1,504 times a frame)
+      for (let i = 0; i < points.length; i++) {
+        const pt = points[i];
+        const la = pt.lat * DEG;
+        const lo = pt.lng * DEG + rotRef.current;
+        const vx = Math.cos(la) * Math.cos(lo);
+        const vy = Math.sin(la);
+        const vz = Math.cos(la) * Math.sin(lo);
+        const y2 = vy * cosT - vz * sinT;
+        const z2 = vy * sinT + vz * cosT;
+        if (z2 <= 0.02) continue;
+        const px = cx + vx * R;
+        const py = cy - y2 * R;
         const boost = pt.rank <= 50 ? 1.5 : pt.rank <= 200 ? 1.1 : 0.85;
-        const s = (1.3 + p.depth * 1.5) * boost;
-        const alpha = 0.55 + p.depth * 0.45;
+        const sz = (1.3 + z2 * 1.5) * boost;
+        const alpha = 0.55 + z2 * 0.45;
         if (pt.rank <= 50) {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, s * 2.4, 0, Math.PI * 2);
+          ctx.arc(px, py, sz * 2.4, 0, Math.PI * 2);
           ctx.fillStyle = "rgba(201,255,74," + alpha * 0.22 + ")";
           ctx.fill();
         }
         ctx.beginPath();
-        ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
+        ctx.arc(px, py, sz * 0.6, 0, Math.PI * 2);
         ctx.fillStyle =
           pt.rank <= 50
             ? "rgba(201,255,74," + alpha + ")"
