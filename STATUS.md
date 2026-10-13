@@ -650,27 +650,42 @@ from `docs/exam-hub-blueprint.md` is now real, with its first content.
 - The card says plainly that the **accounts are separate** and nothing is carried between the sites.
   This is a hand-off, not single sign-on, and implying otherwise would be the easy lie.
 
-## One login across both products (2026-10-13 — staged, one paste away)
+## One login across both products (2026-10-13 — DONE and verified)
 
-Decision taken: consolidate onto **one** Supabase project so SAThack and AdmissionHack share an
-account pool. Everything is prepared; only a dashboard paste remains.
+Both SAThack and AdmissionHack now authenticate against the **sathack** project
+(`arpwvfphzryaaxrvegju`), so one account pool covers both. The dedicated `admissionhack` project
+(`nkqjlccomtcqwsawbndp`) is left in place, paused, as rollback.
 
-- `supabase/ecosystem-migration.sql` — both migrations concatenated into one file to paste into the
-  **sathack** project's SQL editor, with a header explaining why it is safe to run against a live app
-  (`ah_`-prefixed objects, **no trigger on `auth.users`**, namespaced buckets) and a verification query
-  at the end that reports what should now exist.
-- `scripts/switch-to-ecosystem.sh` — points this app at that project, updates the Vercel env for
-  production and preview, rebuilds, deploys, and runs the verification suite.
-- **It carries a safety interlock, and the interlock was tested.** It asks the target project for
-  `ah_profiles` and refuses to continue if the table is not there — switching early would leave the
-  live site with accounts, sync and documents that all fail, which is worse than not switching. Ran it
-  before the migration to confirm it refuses, leaves `.env.local` untouched, and creates no backup:
-  verified, exit 1.
-- Reversible by design: it copies `.env.local` to `.env.local.pre-ecosystem` first, and the old project
-  stays paused rather than deleted.
-- **Blocked on:** Supabase tool access (the MCP was offline for this entire session), so the SQL editor
-  paste is the one human step. After that: `./scripts/switch-to-ecosystem.sh`, and the two dashboard
-  settings (Redirect URLs for both origins, and Confirm email off) that the script prints at the end.
+- `supabase/ecosystem-migration.sql` — both migrations in one file, pasted into that project's SQL
+  editor. Safe against a live app: everything is `ah_`-prefixed, there is **no trigger on `auth.users`**,
+  buckets are namespaced, and it is idempotent.
+- `scripts/switch-to-ecosystem.sh` — repoints this app, updates the Vercel env for production and
+  preview, rebuilds, deploys, and re-runs the suite. Reversible: it copies `.env.local` to
+  `.env.local.pre-ecosystem` first.
+- **The interlock was tested, not trusted.** It asks the target project for `ah_profiles` and refuses to
+  continue if the table is missing — switching early would leave the live site with accounts, sync and
+  documents that all fail. Run before the migration it correctly refused, left `.env.local` untouched
+  and exited 1.
+- **Verified after the switch, not assumed:** all 11 tables present in the shared project;
+  `verify-backend.mjs` **39 passed, 0 failed** there (group-join consent, folder enforcement and
+  counselor file access included); and the **deployed** bundle was checked directly — it ships
+  `arpwvfphzryaaxrvegju` and **zero** references to the old project, which is the only honest way to
+  confirm a build-time `NEXT_PUBLIC_*` variable took effect.
+- **Remaining, and it is one dashboard entry:** add `https://admissionhack-seven.vercel.app` to
+  **Redirect URLs** in the sathack project. GoTrue does not error on an unlisted `redirect_to` — it
+  silently substitutes SITE_URL — so without it the reset and confirmation links finish on SAThack's
+  domain. Worth one glance at **Site URL** on the same screen. Also **delete the two throwaway test
+  accounts**: they now live in the shared pool, so they are sign-inable on the live site, and the public
+  repo documents their password.
+- **Corrected:** earlier notes here said to turn "Confirm email" off. Do not. SAThack's existing users
+  signed up by email+password against this same project and its `/auth/confirm` route works, so the
+  mailer delivers; confirmation stays ON.
+- **No `/auth/callback` route is needed, deliberately.** `flowType` defaults to `implicit`, so email
+  links arrive as a `#access_token` hash that the client picks up. A server route cannot read a hash, so
+  adding one would have broken the path that works.
+- **"One login" means one account pool, not single sign-on.** Supabase keeps the session in per-origin
+  localStorage, so signing in on SAThack does not light up AdmissionHack. Same credentials, same data,
+  two sessions — cross-origin handoff would be real work, not a setting.
 - Not built yet in this pillar: timed mock tests with a real score estimate, an adaptive section, and
   AI essay grading. Local practice history is not synced to the account — a counselor sees the entered
   scores, not the practice attempts.
