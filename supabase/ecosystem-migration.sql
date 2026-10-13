@@ -18,7 +18,7 @@
 -- ══════════════════════════════════════════════════════════════════════════
 
 -- ══════════════════════════════════════════════════════════════════════════
--- AdmissionHack — schema
+-- Part 1 of 2 — AdmissionHack — schema
 --
 -- Portable and re-runnable: every statement is guarded, so applying it twice
 -- is a no-op rather than an error, and a half-applied state can be repaired by
@@ -453,11 +453,7 @@ create policy ah_storage_counselor_read on storage.objects
 
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Part 2 of 2 — document folders and counselor groups
--- ══════════════════════════════════════════════════════════════════════════
-
--- ══════════════════════════════════════════════════════════════════════════
--- AdmissionHack — 0002: document folders and counselor groups
+-- Part 2 of 2 — AdmissionHack — 0002: document folders and counselor groups
 --
 -- Two additions, both guarded so this file can be applied on top of 0001 and
 -- re-applied safely.

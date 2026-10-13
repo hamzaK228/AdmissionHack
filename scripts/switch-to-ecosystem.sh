@@ -89,8 +89,9 @@ if node supabase/verify-backend.mjs; then
   echo "  the consent model still holds against the shared project"
 else
   echo "  ⚠ the suite could not pass. Expected if its two test accounts do not exist"
-  echo "    in the shared project yet — see the header of supabase/verify-backend.mjs"
-  echo "    for the SQL that creates them. They are throwaway; delete them afterwards."
+  echo "    in the shared project yet — paste supabase/create-verify-accounts.sql into"
+  echo "    that project's SQL editor, re-run the suite, then delete them with the"
+  echo "    statement at the end of that same file."
 fi
 
 cat <<'DONE'
