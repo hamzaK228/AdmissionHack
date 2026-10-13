@@ -578,11 +578,33 @@ mind: the free plan gives 1 GB of storage, which student documents will eventual
   for. Importing from `./all` took the sitemap to **1,543** URLs.
 - `.gitignore` had gained `.env*` from the Vercel CLI, which also swallowed `.env.example`; a negation
   keeps the file that documents the configuration tracked.
-- Redeploy after a change: `npx vercel --prod` from the repo root. `./push-to-github.sh` still pushes
-  the code, but note that Vercel is currently deploying from the **local source**, not from GitHub, so
-  a push alone does not update the site.
+- **Deploys come from GitHub**: the repo is connected to the project, so **a push to `main` deploys to
+  production by itself** — verified by pushing and watching a new deployment appear plus the new route
+  answer 200 on the alias, with no CLI command run. (An earlier note here claimed Vercel was building
+  from the local source; that was wrong.) `npx vercel --prod` also works and is useful for deploying
+  without a commit.
 - Not done: **no custom domain.** The site sits on a `vercel.app` subdomain and `NEXT_PUBLIC_SITE_URL`
   points at it; both follow from the brand/domain decision, which is still open.
+
+## Auth, finished on the client (2026-10-13)
+
+- **Password reset** at `/auth/reset` — one route for both halves: the page a user visits to ask for a
+  link, and the page that link returns to. Because the link carries a recovery session, the route can
+  tell the two situations apart instead of needing a second one.
+- **Resend the confirmation email**, and the panel now distinguishes *"this address is not confirmed
+  yet"* from *"wrong password"* — only one of those is fixed by typing the password again.
+- **Sign-up reports whether a session came back**, because whether a new account is signed in
+  immediately is a server-side setting (Confirm email) that the client must not assume either way.
+- **A signed-in user can change their password** from the account tab.
+- **Two dashboard settings remain, and no amount of code can do them:** 
+  1. Authentication → Email → **turn off "Confirm email"** (or configure SMTP). Until then the default
+     mailer rate-limits, so confirmation *and* reset mail both fail and no real signup can finish.
+  2. Authentication → URL Configuration → **add the deployed origin to Redirect URLs**. Without it
+     GoTrue silently falls back to Site URL and the reset link lands somewhere that cannot finish.
+- Verified in the browser: with a session, `/auth/reset` renders *"Your link worked. Choose a new
+  password."*; without one it renders the request form; the account tab exposes both the resend and the
+  change-password controls. The emailed round trip itself cannot be verified while the mailer is
+  rate-limited — that is the honest limit of this check.
 
 ## Document folders and counselor groups (2026-10-13)
 
