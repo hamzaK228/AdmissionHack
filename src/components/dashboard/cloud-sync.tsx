@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { pullWorkspace, pushWorkspace, type SyncPayload } from "@/lib/workspace-sync";
+import { isAppStatus, statusOf } from "@/lib/applications";
 import {
   useStore,
   type AppEntry,
@@ -85,7 +86,13 @@ function toPayload(s: LocalState): SyncPayload {
         }
       : null,
     exams: scored,
-    universities: s.apps.map((a) => ({ slug: a.slug, tier: a.tier })),
+    universities: s.apps.map((a) => ({
+      slug: a.slug,
+      tier: a.tier,
+      status: statusOf(a),
+      submittedOn: a.submittedOn ?? null,
+      decidedOn: a.decidedOn ?? null,
+    })),
     deadlines: s.deadlines.map((d) => ({ title: d.title, date: d.date })),
     portfolio: s.portfolio.map((p) => ({
       kind: p.kind,
@@ -116,7 +123,15 @@ function fromPayload(w: SyncPayload): WorkspaceImport {
           gpaScale: w.profile.gpa_scale,
         }
       : undefined,
-    apps: w.universities.map((u) => ({ slug: u.slug, tier: u.tier })),
+    // Only a status the app recognises is written back: a value from a newer (or
+    // hand-edited) database must not be persisted into this student's workspace.
+    apps: w.universities.map((u) => ({
+      slug: u.slug,
+      tier: u.tier,
+      ...(isAppStatus(u.status) ? { status: u.status } : {}),
+      ...(u.submittedOn ? { submittedOn: u.submittedOn } : {}),
+      ...(u.decidedOn ? { decidedOn: u.decidedOn } : {}),
+    })),
     portfolio: w.portfolio.map((p) => ({
       id: crypto.randomUUID(),
       kind: p.kind,

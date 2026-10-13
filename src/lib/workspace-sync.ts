@@ -32,7 +32,14 @@ export interface SyncPayload {
    * poorer than the local one.
    */
   exams: Record<string, { overall?: string; sections?: Record<string, string> }>;
-  universities: { slug: string; tier: AhTier }[];
+  universities: {
+    slug: string;
+    tier: AhTier;
+    /** tracker fields; only sent once the database has the columns (see below) */
+    status?: string;
+    submittedOn?: string | null;
+    decidedOn?: string | null;
+  }[];
   deadlines: { title: string; date: string }[];
   portfolio: {
     kind: AhPortfolioKind;
@@ -53,6 +60,28 @@ const uid = async () => {
   const { data } = await sb.auth.getUser();
   return data.user?.id ?? null;
 };
+
+/**
+ * Do the tracker columns exist yet?
+ *
+ * The tracker's migration is applied by hand, so the app can be deployed before
+ * the database has those columns. That matters more than it sounds, because the
+ * university list is replaced with a delete-then-insert: sending `status` to a
+ * table without it would fail the insert *after* the delete had run, quietly
+ * emptying a student's list in the cloud. So the tracker fields ride along only
+ * when the columns are confirmed; without them the list still syncs, just
+ * without statuses until the migration is applied.
+ *
+ * Only a positive answer is cached, so a transient network failure retries on
+ * the next push instead of disabling the tracker for the whole session.
+ */
+let trackerColumns = false;
+async function trackerColumnsAvailable(sb: NonNullable<ReturnType<typeof supabase>>): Promise<boolean> {
+  if (trackerColumns) return true;
+  const { error } = await sb.from(T.universities).select("status").limit(1);
+  if (!error) trackerColumns = true;
+  return !error;
+}
 
 /** Upload the local workspace to the cloud, replacing this user's rows. */
 export async function pushWorkspace(payload: SyncPayload): Promise<SyncResult> {
@@ -84,11 +113,28 @@ export async function pushWorkspace(payload: SyncPayload): Promise<SyncResult> {
       if (error) throw error;
     }
 
+    // Probed before the delete below, deliberately: a write we cannot complete
+    // must not be preceded by a delete.
+    const withTracker = await trackerColumnsAvailable(sb);
+
     await sb.from(T.universities).delete().eq("user_id", id);
     if (payload.universities.length) {
       const { error } = await sb
         .from(T.universities)
-        .insert(payload.universities.map((u) => ({ user_id: id, university_slug: u.slug, tier: u.tier })));
+        .insert(
+          payload.universities.map((u) => ({
+            user_id: id,
+            university_slug: u.slug,
+            tier: u.tier,
+            ...(withTracker
+              ? {
+                  status: u.status ?? "planning",
+                  submitted_on: u.submittedOn ?? null,
+                  decided_on: u.decidedOn ?? null,
+                }
+              : {}),
+          })),
+        );
       if (error) throw error;
     }
 
@@ -127,14 +173,42 @@ export async function pushWorkspace(payload: SyncPayload): Promise<SyncResult> {
 
 const EXAM_COLS = "exam_id, overall, sections";
 
+/** A university row as this app reads it; the tracker fields are optional. */
+interface UniRow {
+  university_slug: string;
+  tier: AhTier;
+  status?: string | null;
+  submitted_on?: string | null;
+  decided_on?: string | null;
+}
+
 const readWorkspace = async (
   sb: NonNullable<ReturnType<typeof supabase>>,
   id: string,
 ): Promise<SyncPayload> => {
+  /**
+   * Read the list, with the tracker columns when the database has them.
+   *
+   * Two literal selects rather than one column-list variable: PostgREST infers
+   * the row type from the string it is given, so a variable defeats it. The
+   * fallback matters because restoring a workspace against a database that has
+   * not had the tracker migration applied must still bring the list back — a
+   * failed read here would look like an empty list and could overwrite one.
+   */
+  const readUniRows = async (): Promise<UniRow[]> => {
+    const full = await sb
+      .from(T.universities)
+      .select("university_slug, tier, status, submitted_on, decided_on")
+      .eq("user_id", id);
+    if (!full.error) return full.data ?? [];
+    const base = await sb.from(T.universities).select("university_slug, tier").eq("user_id", id);
+    return base.data ?? [];
+  };
+
   const [profile, exams, unis, deadlines, portfolio, checklist] = await Promise.all([
     sb.from(T.profiles).select("*").eq("id", id).maybeSingle(),
     sb.from(T.exams).select(EXAM_COLS).eq("user_id", id),
-    sb.from(T.universities).select("university_slug, tier").eq("user_id", id),
+    readUniRows(),
     sb.from(T.deadlines).select("title, due_on").eq("user_id", id),
     sb.from(T.portfolio).select("kind, title, org, description, years, hours").eq("user_id", id),
     sb.from(T.checklist).select("doc_key, done").eq("user_id", id),
@@ -161,7 +235,15 @@ const readWorkspace = async (
         },
       ]),
     ),
-    universities: (unis.data ?? []).map((r) => ({ slug: r.university_slug, tier: r.tier })),
+    // `status` and the dates are simply absent from the row when the migration
+    // has not been applied, so they are read defensively rather than assumed.
+    universities: unis.map((r) => ({
+      slug: r.university_slug,
+      tier: r.tier,
+      ...(typeof r.status === "string" ? { status: r.status } : {}),
+      ...(typeof r.submitted_on === "string" ? { submittedOn: r.submitted_on } : {}),
+      ...(typeof r.decided_on === "string" ? { decidedOn: r.decided_on } : {}),
+    })),
     deadlines: (deadlines.data ?? []).map((r) => ({ title: r.title, date: r.due_on })),
     portfolio: (portfolio.data ?? []).map((r) => ({
       kind: r.kind,

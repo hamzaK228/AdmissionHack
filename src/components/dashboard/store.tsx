@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { withStatus, statusSpec, type AppStatus } from "@/lib/applications";
 
 export interface Profile {
   name: string;
@@ -28,6 +29,10 @@ export type Tier = "dream" | "target" | "safe";
 export interface AppEntry {
   slug: string;
   tier: Tier;
+  /** where the application stands; absent on entries saved before the tracker */
+  status?: AppStatus;
+  submittedOn?: string;
+  decidedOn?: string;
 }
 
 export type PortfolioKind = "activity" | "award" | "work" | "volunteering";
@@ -85,6 +90,8 @@ interface Store {
   toggleShortlist: (slug: string) => void;
   isSaved: (slug: string) => boolean;
   setTier: (slug: string, tier: Tier) => void;
+  /** move an application along its lifecycle; stamps submission/decision dates */
+  setStatus: (slug: string, status: AppStatus) => void;
   removeApp: (slug: string) => void;
   portfolio: PortfolioEntry[];
   addPortfolio: (p: Omit<PortfolioEntry, "id">) => void;
@@ -206,8 +213,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [showToast],
   );
 
-  const removeApp = useCallback((slug: string) => {
-    setApps((prev) => {
+  const setStatus = useCallback(
+    (slug: string, status: AppStatus) => {
+      setApps((prev) => {
+        const next = prev.map((a) => (a.slug === slug ? (withStatus(a, status) as AppEntry) : a));
+        persist("ah.apps", next);
+        return next;
+      });
+      showToast(`${statusSpec(status).short} ✓`);
+    },
+    [showToast],
+  );
+
+  const removeApp = useCallback((slug: string) => {    setApps((prev) => {
       const next = prev.filter((a) => a.slug !== slug);
       persist("ah.apps", next);
       return next;
@@ -320,6 +338,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleShortlist,
       isSaved: (slug: string) => apps.some((a) => a.slug === slug),
       setTier,
+      setStatus,
       removeApp,
       portfolio,
       addPortfolio,
@@ -334,7 +353,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       importWorkspace,
       toast,
     }),
-    [ready, onboarded, setOnboarded, profile, saveProfile, clearProfile, apps, toggleShortlist, setTier, removeApp, portfolio, addPortfolio, removePortfolio, exams, saveExams, deadlines, addDeadline, removeDeadline, checklist, toggleDoc, importWorkspace, toast],
+    [ready, onboarded, setOnboarded, profile, saveProfile, clearProfile, apps, toggleShortlist, setTier, setStatus, removeApp, portfolio, addPortfolio, removePortfolio, exams, saveExams, deadlines, addDeadline, removeDeadline, checklist, toggleDoc, importWorkspace, toast],
   );
 
   return (

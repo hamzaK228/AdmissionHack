@@ -323,15 +323,31 @@ function CounselorRoster() {
                 {openData.universities.length === 0 && (
                   <li className="text-sm text-dim">none shortlisted</li>
                 )}
-                {openData.universities.map((u) => (
-                  <li
-                    key={u.slug}
-                    className="flex items-center justify-between rounded-lg border border-line bg-ink px-3 py-2 text-xs"
-                  >
-                    <span className="truncate text-paper">{u.slug.replace(/-/g, " ")}</span>
-                    <span className="ml-3 shrink-0 text-lime">{u.tier}</span>
-                  </li>
-                ))}
+                {openData.universities.map((u) => {
+                  const day = (iso: string) =>
+                    new Date(iso + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short" });
+                  return (
+                    <li
+                      key={u.slug}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2 text-xs"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-paper">{u.slug.replace(/-/g, " ")}</span>
+                        {(u.submittedOn || u.decidedOn) && (
+                          <span className="text-[10px] text-dim">
+                            {u.submittedOn && <>submitted {day(u.submittedOn)}</>}
+                            {u.submittedOn && u.decidedOn && " · "}
+                            {u.decidedOn && <>decided {day(u.decidedOn)}</>}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block text-lime">{u.tier}</span>
+                        {u.status && <span className="text-[10px] text-fog">{u.status}</span>}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
 

@@ -422,18 +422,27 @@ export type Database = {
       ah_university_lists: {
         Row: {
           added_at: string;
+          decided_on: string | null;
+          status: string;
+          submitted_on: string | null;
           tier: Database["public"]["Enums"]["ah_tier"];
           university_slug: string;
           user_id: string;
         };
         Insert: {
           added_at?: string;
+          decided_on?: string | null;
+          status?: string;
+          submitted_on?: string | null;
           tier?: Database["public"]["Enums"]["ah_tier"];
           university_slug: string;
           user_id: string;
         };
         Update: {
           added_at?: string;
+          decided_on?: string | null;
+          status?: string;
+          submitted_on?: string | null;
           tier?: Database["public"]["Enums"]["ah_tier"];
           university_slug?: string;
           user_id?: string;

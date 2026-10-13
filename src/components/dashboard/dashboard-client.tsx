@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore, type Profile, type PortfolioEntry, type PortfolioKind, type Tier } from "@/components/dashboard/store";
 import { MatchTab } from "@/components/dashboard/match-tab";
+import { CollegeList } from "@/components/dashboard/college-list";
 import { RoadmapTab } from "@/components/dashboard/roadmap-tab";
 import { ScoreReportUpload } from "@/components/dashboard/score-report-upload";
 import { CloudSync } from "@/components/dashboard/cloud-sync";
@@ -206,85 +207,6 @@ function ProfileWizard({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ── Universities tab (Dream / Target / Safe) ────────────── */
-function UniversitiesTab({ uniIndex }: { uniIndex: Record<string, SlimUni> }) {
-  const { apps, setTier, removeApp } = useStore();
-  const byTier = (t: Tier) =>
-    apps
-      .filter((a) => a.tier === t)
-      .map((a) => uniIndex[a.slug])
-      .filter(Boolean);
-
-  return (
-    <div>
-      <p className="max-w-2xl text-sm leading-relaxed text-fog">
-        Build a balanced list: 2–3 <span className="text-amber">dream</span>, 3–4{" "}
-        <span className="text-lime">target</span> and 2 <span className="text-mint">safe</span>{" "}
-        universities. Move schools between tiers with the chips — the {" "}
-        <span className="text-lime">+</span> button in the directory adds everything as Target first.
-      </p>
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        {TIERS.map((tier) => {
-          const list = byTier(tier.id);
-          return (
-            <div key={tier.id} className="rounded-2xl border border-line bg-panel/70 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-paper">
-                  {tier.icon} {tier.label}
-                </h3>
-                <span className="text-xs font-bold text-lime">{list.length}</span>
-              </div>
-              <p className="mt-1 text-[11px] text-dim">{tier.hint}</p>
-              <div className="mt-4 space-y-2">
-                {list.length === 0 && (
-                  <p className="rounded-xl border border-dashed border-line2 p-4 text-xs text-fog">
-                    empty
-                  </p>
-                )}
-                {list.map((u) => (
-                  <div key={u.slug} className="rounded-xl border border-line bg-ink p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <Link href={`/universities/${u.slug}`} className="min-w-0 group">
-                        <span className="block truncate text-sm font-bold text-paper group-hover:text-lime">
-                          {u.name}
-                        </span>
-                        <span className="text-[11px] text-dim">
-                          {u.countryName}{u.qsRank != null ? ` · QS #${u.qsRank}` : ""}
-                        </span>
-                      </Link>
-                      <button type="button" onClick={() => removeApp(u.slug)}
-                        aria-label={`Remove ${u.name}`}
-                        className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-dim hover:border-red/50 hover:text-red">
-                        ✕
-                      </button>
-                    </div>
-                    <div className="mt-2 flex gap-1">
-                      {TIERS.map((t) => (
-                        <button key={t.id} type="button" onClick={() => setTier(u.slug, t.id)}
-                          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${
-                            u.slug && byTier(t.id).some((x) => x.slug === u.slug)
-                              ? "bg-lime/15 text-lime"
-                              : "bg-panel text-dim hover:text-fog"
-                          }`}>
-                          {t.icon} {t.label[0]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <Link href="/universities"
-        className="mt-6 inline-block rounded-xl border border-line2 bg-panel px-4 py-2.5 text-sm font-bold text-lime transition-colors hover:border-lime/50">
-        browse 1500+ universities →
-      </Link>
     </div>
   );
 }
@@ -737,7 +659,7 @@ export function DashboardClient({
         >
         {tab === "overview" && <OverviewTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "match" && <MatchTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
-        {tab === "universities" && <UniversitiesTab uniIndex={uniIndex} />}
+        {tab === "universities" && <CollegeList uniIndex={uniIndex} />}
         {tab === "roadmap" && <RoadmapTab onGo={(t) => setTab(t as TabId)} />}
         {tab === "deadlines" && (
           <div className="max-w-3xl">
