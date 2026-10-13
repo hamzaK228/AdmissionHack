@@ -9,6 +9,7 @@ export const journeySteps: JourneyStep[] = [
     summary:
       "Before any exam or application: where do you want to live and study, and what do you want to become? Destination decides everything downstream — language, exams, costs, visa rules.",
     timing: "12–18 months before enrollment",
+    offset: { from: "enrollment", minMonths: 12, maxMonths: 18 },
     whatToDo: [
       "List your priorities: cost, language, quality of education, work rights after graduation, safety, distance from home.",
       "Pick 2–3 candidate countries — compare tuition and living costs, not just rankings.",
@@ -30,6 +31,7 @@ export const journeySteps: JourneyStep[] = [
     summary:
       "Build a realistic list of 6–10 universities across three bands: reach (ambitious), match (realistic), safety (very likely). Every slot should be a university you would actually attend.",
     timing: "12–15 months before enrollment",
+    offset: { from: "enrollment", minMonths: 12, maxMonths: 15 },
     whatToDo: [
       "For each country, find how your certificate (GPA, national exam, IB, A-Levels) converts to their requirements.",
       "Split your list: 2–3 reach, 3–4 match, 2 safety. Never apply to only top-ranked schools.",
@@ -52,6 +54,7 @@ export const journeySteps: JourneyStep[] = [
     summary:
       "English proficiency plus (often) academic aptitude. English tests are needed by almost everyone; SAT/ACT for US and many competitive programs; national systems have their own gates (CSCA for China from 2026, EJU for Japan, IMAT for Italy-medicine).",
     timing: "Take exams 8–12 months before enrollment (scores need to exist before deadlines)",
+    offset: { from: "enrollment", minMonths: 8, maxMonths: 12 },
     whatToDo: [
       "Identify the exact exam set for your shortlist — often one English test + one academic test covers everything.",
       "Check score requirements per university before booking (IELTS 6.5 vs 7.0 changes prep length).",
@@ -74,6 +77,7 @@ export const journeySteps: JourneyStep[] = [
     summary:
       "Transcripts, diplomas, translations, recommendations, passport. The most mechanical step — and the one that causes the most missed deadlines. Many documents need weeks of lead time.",
     timing: "6–10 months before deadlines",
+    offset: { from: "deadline", minMonths: 6, maxMonths: 10 },
     whatToDo: [
       "Order official transcripts from your school — sealed and signed versions for each application.",
       "Check translation and legalization requirements: some countries need sworn translations or apostilles.",
@@ -96,6 +100,7 @@ export const journeySteps: JourneyStep[] = [
     summary:
       "The part of the application that is fully yours. A personal statement is not a CV in prose — it's the argument for why you, this field, this university. UK universities and US colleges read them very differently.",
     timing: "4–8 months before deadlines (essays take 3+ serious drafts)",
+    offset: { from: "deadline", minMonths: 4, maxMonths: 8 },
     whatToDo: [
       "Read the question/prompt precisely — 'why this program' essays fail when they could be sent to any university.",
       "Show, don't claim: concrete projects, competitions, reading and experiences beat adjectives.",
@@ -162,6 +167,7 @@ export const journeySteps: JourneyStep[] = [
     summary:
       "Acceptance letter in hand → student visa → housing → insurance → arrival logistics. Processing times vary from 2 weeks (some countries) to 3+ months, and some need financial proofs you should prepare early.",
     timing: "3–5 months before departure",
+    offset: { from: "enrollment", minMonths: 3, maxMonths: 5 },
     whatToDo: [
       "Start the visa immediately after acceptance — blocked accounts (Germany), GIC (Canada), I-20 (US) all take weeks.",
       "Apply for university housing at the first moment, or research private housing markets early.",

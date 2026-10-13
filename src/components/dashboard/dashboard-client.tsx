@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore, type Profile, type PortfolioEntry, type PortfolioKind, type Tier } from "@/components/dashboard/store";
 import { MatchTab } from "@/components/dashboard/match-tab";
+import { RoadmapTab } from "@/components/dashboard/roadmap-tab";
 import { ScoreReportUpload } from "@/components/dashboard/score-report-upload";
 import { CloudSync } from "@/components/dashboard/cloud-sync";
 import { PracticeHistory } from "@/components/practice/practice-history";
@@ -616,6 +617,7 @@ const TABS = [
   { id: "match", label: "match ⚡" },
   { id: "universities", label: "universities" },
   { id: "deadlines", label: "deadlines" },
+  { id: "roadmap", label: "timeline ⏱" },
   { id: "documents", label: "documents" },
   { id: "exams", label: "exams" },
   { id: "portfolio", label: "portfolio" },
@@ -736,6 +738,7 @@ export function DashboardClient({
         {tab === "overview" && <OverviewTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "match" && <MatchTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "universities" && <UniversitiesTab uniIndex={uniIndex} />}
+        {tab === "roadmap" && <RoadmapTab onGo={(t) => setTab(t as TabId)} />}
         {tab === "deadlines" && (
           <div className="max-w-3xl">
             {nextDeadline && (

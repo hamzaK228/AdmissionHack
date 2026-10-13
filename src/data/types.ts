@@ -128,6 +128,15 @@ export interface JourneyStep {
   shortTitle: string;
   summary: string;
   timing: string;
+  /**
+   * The machine-readable form of `timing`, so the dashboard can put a real date
+   * on the phase instead of leaving it as prose. Measured backwards from the
+   * enrolment month (`from: "enrollment"`) or from the student's earliest
+   * application deadline (`from: "deadline"`); `minMonths`/`maxMonths` are the
+   * usual range, and a phase with no meaningful offset simply omits it — the
+   * generator then presents that phase without dates rather than inventing them.
+   */
+  offset?: { from: "enrollment" | "deadline"; minMonths: number; maxMonths: number };
   whatToDo: string[];
   commonMistakes: string[];
   howAdmissionHackHelps: string;
