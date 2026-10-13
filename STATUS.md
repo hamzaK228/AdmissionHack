@@ -649,6 +649,28 @@ from `docs/exam-hub-blueprint.md` is now real, with its first content.
   and they are not interchangeable, so a student should know which one they are looking at.
 - The card says plainly that the **accounts are separate** and nothing is carried between the sites.
   This is a hand-off, not single sign-on, and implying otherwise would be the easy lie.
+
+## One login across both products (2026-10-13 — staged, one paste away)
+
+Decision taken: consolidate onto **one** Supabase project so SAThack and AdmissionHack share an
+account pool. Everything is prepared; only a dashboard paste remains.
+
+- `supabase/ecosystem-migration.sql` — both migrations concatenated into one file to paste into the
+  **sathack** project's SQL editor, with a header explaining why it is safe to run against a live app
+  (`ah_`-prefixed objects, **no trigger on `auth.users`**, namespaced buckets) and a verification query
+  at the end that reports what should now exist.
+- `scripts/switch-to-ecosystem.sh` — points this app at that project, updates the Vercel env for
+  production and preview, rebuilds, deploys, and runs the verification suite.
+- **It carries a safety interlock, and the interlock was tested.** It asks the target project for
+  `ah_profiles` and refuses to continue if the table is not there — switching early would leave the
+  live site with accounts, sync and documents that all fail, which is worse than not switching. Ran it
+  before the migration to confirm it refuses, leaves `.env.local` untouched, and creates no backup:
+  verified, exit 1.
+- Reversible by design: it copies `.env.local` to `.env.local.pre-ecosystem` first, and the old project
+  stays paused rather than deleted.
+- **Blocked on:** Supabase tool access (the MCP was offline for this entire session), so the SQL editor
+  paste is the one human step. After that: `./scripts/switch-to-ecosystem.sh`, and the two dashboard
+  settings (Redirect URLs for both origins, and Confirm email off) that the script prints at the end.
 - Not built yet in this pillar: timed mock tests with a real score estimate, an adaptive section, and
   AI essay grading. Local practice history is not synced to the account — a counselor sees the entered
   scores, not the practice attempts.

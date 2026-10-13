@@ -1,0 +1,639 @@
+-- ══════════════════════════════════════════════════════════════════════════
+-- AdmissionHack → the SAThack project: ONE account pool for both products.
+--
+-- Paste this whole file into the SQL editor of the **sathack** project
+-- (arpwvfphzryaaxrvegju) and run it. It is additive and guarded: it touches
+-- nothing that SAThack already owns, and running it twice is a no-op.
+--
+-- Why it is safe to run while SAThack is live:
+--   * every object it creates is `ah_`-prefixed, so it cannot collide with
+--     SAThack's own tables (profiles, questions, practice_attempts, duels, …);
+--   * it defines NO trigger on auth.users — a fault here can never roll back a
+--     SAThack signup, which is the failure mode that would actually hurt;
+--   * its storage buckets are namespaced `ah-documents` / `ah-score-reports`, and
+--     its storage policy ignores foreign buckets instead of raising on them.
+--
+-- After this succeeds, run:  ./scripts/switch-to-ecosystem.sh
+-- which points this app at the project, rebuilds, deploys, and verifies.
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- AdmissionHack — schema
+--
+-- Portable and re-runnable: every statement is guarded, so applying it twice
+-- is a no-op rather than an error, and a half-applied state can be repaired by
+-- applying it again. This file is the exact text that is applied.
+--
+-- It runs unmodified in either a dedicated project or inside a shared
+-- database's `public` schema, which constrains three decisions:
+--   * every object is `ah_`-prefixed (tables) or `ah-`-prefixed (storage
+--     buckets), so a shared `public` schema has no collisions and no custom
+--     schema wiring is needed — Supabase's client assumes `public`;
+--   * there are NO triggers, anywhere. A trigger on `auth.users` would run
+--     inside the host app's signup transaction, so a fault here could roll back
+--     *their* signups; `updated_at` is set by the writer instead, and profiles
+--     are created on first use by `ah_ensure_profile`;
+--   * the storage read helper is total — it returns false rather than raising
+--     when handed a row from a foreign bucket, because storage policies are
+--     evaluated per row across the whole project.
+--
+-- Threat model: this database holds student passports, transcripts, official
+-- exam score reports and family financial documents. Every table is
+-- deny-by-default via RLS; a row is visible only to its owner, plus a counselor
+-- who has been explicitly linked AND whose link the student has accepted.
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- ── enums ─────────────────────────────────────────────────────────────────
+do $$ begin
+  if not exists (select 1 from pg_type where typname = 'ah_role') then
+    create type ah_role as enum ('student', 'counselor', 'parent');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'ah_tier') then
+    create type ah_tier as enum ('dream', 'target', 'safe');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'ah_portfolio_kind') then
+    create type ah_portfolio_kind as enum ('activity', 'award', 'work', 'volunteering');
+  end if;
+end $$;
+
+-- ── profiles ──────────────────────────────────────────────────────────────
+create table if not exists ah_profiles (
+  id          uuid primary key references auth.users on delete cascade,
+  role        ah_role not null default 'student',
+  full_name   text not null default '',
+  level       text check (level in ('bachelor''s', 'master''s')),
+  country     text,
+  intake      text,
+  budget      integer,
+  gpa         text,
+  gpa_scale   text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- ── exam results (structured scores) ──────────────────────────────────────
+create table if not exists ah_exam_results (
+  user_id     uuid not null references ah_profiles on delete cascade,
+  exam_id     text not null,              -- ielts | toefl | sat | duolingo | gpa
+  overall     text,
+  sections    jsonb not null default '{}'::jsonb,   -- { L, R, W, S } / { ebrw, math }
+  taken_on    date,
+  primary key (user_id, exam_id),
+  updated_at  timestamptz not null default now()
+);
+
+-- ── score reports: the uploaded official file, per exam ───────────────────
+-- Rows are immutable to their owner: the owner inserts and deletes, but only a
+-- linked counselor can set `is_verified` — that column is the entire point of
+-- the feature, so the owner must not be able to write it.
+create table if not exists ah_score_reports (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references ah_profiles on delete cascade,
+  exam_id     text not null,
+  file_path   text not null,              -- path within the ah-score-reports bucket
+  file_name   text not null,
+  mime_type   text,
+  size_bytes  bigint,
+  is_verified boolean not null default false,
+  verified_by uuid references ah_profiles on delete set null,
+  verified_at timestamptz,
+  uploaded_at timestamptz not null default now()
+);
+create index if not exists ah_score_reports_user_idx on ah_score_reports (user_id, exam_id);
+
+-- ── university lists: dream / target / safe ───────────────────────────────
+create table if not exists ah_university_lists (
+  user_id         uuid not null references ah_profiles on delete cascade,
+  university_slug text not null,
+  tier            ah_tier not null default 'target',
+  added_at        timestamptz not null default now(),
+  primary key (user_id, university_slug)
+);
+
+-- ── deadlines ─────────────────────────────────────────────────────────────
+create table if not exists ah_deadlines (
+  id        uuid primary key default gen_random_uuid(),
+  user_id   uuid not null references ah_profiles on delete cascade,
+  title     text not null,
+  due_on    date not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists ah_deadlines_user_idx on ah_deadlines (user_id, due_on);
+
+-- ── portfolio ─────────────────────────────────────────────────────────────
+create table if not exists ah_portfolio (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references ah_profiles on delete cascade,
+  kind        ah_portfolio_kind not null default 'activity',
+  title       text not null,
+  org         text,
+  description text,
+  years       text,
+  hours       text,
+  created_at  timestamptz not null default now()
+);
+
+-- ── documents (vault) ─────────────────────────────────────────────────────
+create table if not exists ah_documents (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references ah_profiles on delete cascade,
+  name        text not null,
+  file_path   text not null,              -- path within the ah-documents bucket
+  mime_type   text,
+  size_bytes  bigint,
+  uploaded_at timestamptz not null default now()
+);
+
+-- ── document checklist state ──────────────────────────────────────────────
+create table if not exists ah_checklist (
+  user_id    uuid not null references ah_profiles on delete cascade,
+  doc_key    text not null,
+  done       boolean not null default false,
+  primary key (user_id, doc_key)
+);
+
+-- ── counselor links: who may read which student's workspace ───────────────
+create table if not exists ah_counselor_links (
+  id            uuid primary key default gen_random_uuid(),
+  counselor_id  uuid not null references ah_profiles on delete cascade,
+  student_email text not null,           -- invited by email
+  student_id    uuid references ah_profiles on delete cascade,
+  status        text not null default 'pending'
+                check (status in ('pending', 'active', 'revoked')),
+  created_at    timestamptz not null default now(),
+  responded_at  timestamptz,
+  unique (counselor_id, student_email)
+);
+create index if not exists ah_counselor_links_active_idx
+  on ah_counselor_links (student_id) where status = 'active';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Helpers
+--
+-- All SECURITY DEFINER so a policy can consult another table without
+-- recursing through that table's own RLS; all `stable`; all pinned
+-- `search_path` (a mutable search_path on a definer function is an escalation
+-- vector); none of them raise on unexpected input.
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Is the current user an ACCEPTED counselor for this student?
+create or replace function ah_is_counselor_of(student uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from ah_counselor_links l
+    where l.student_id = student
+      and l.counselor_id = auth.uid()
+      and l.status = 'active'
+  );
+$$;
+
+-- Has this counselor invited the current user? Lets a student see who is asking.
+create or replace function ah_is_my_counselor(counselor uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from ah_counselor_links l
+    where l.counselor_id = counselor
+      and l.status in ('pending', 'active')
+      and lower(l.student_email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
+$$;
+
+-- May the current user read this storage object as a counselor? Total by
+-- construction: not one of our buckets, or a first path segment that is not a
+-- uuid, is simply false.
+create or replace function ah_can_read_object(obj_bucket text, obj_name text)
+returns boolean
+language plpgsql
+security definer
+stable
+set search_path = public
+as $$
+declare
+  first text;
+begin
+  if obj_bucket not in ('ah-documents', 'ah-score-reports') then
+    return false;
+  end if;
+  first := split_part(obj_name, '/', 1);
+  if first !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+    return false;
+  end if;
+  return ah_is_counselor_of(first::uuid);
+exception when others then
+  return false;
+end;
+$$;
+
+-- Create the caller's profile on first use and claim any invites addressed to
+-- their email. This is what a signup trigger would have done, minus the
+-- coupling: it runs in the app's own request, never inside auth.users, so a
+-- fault here cannot break anyone's signup.
+create or replace function ah_ensure_profile(
+  p_full_name text default '',
+  p_role      ah_role default 'student'
+)
+returns ah_profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  me      uuid := auth.uid();
+  mail    text := lower(coalesce(auth.jwt() ->> 'email', ''));
+  profile ah_profiles;
+begin
+  if me is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+
+  insert into ah_profiles (id, full_name, role)
+  values (me, coalesce(p_full_name, ''), coalesce(p_role, 'student'))
+  on conflict (id) do update
+    set full_name  = case
+                       when ah_profiles.full_name = '' then excluded.full_name
+                       else ah_profiles.full_name
+                     end,
+        -- never overwrite a role that is already set: a counselor must not be
+        -- demoted because they opened the student dashboard once
+        updated_at = now();
+
+  -- attach this identity to invites waiting on the email. Status stays
+  -- 'pending': linking tells the counselor the account now exists, and only
+  -- the student's own accept turns it 'active'.
+  update ah_counselor_links
+     set student_id = me
+   where student_id is null
+     and mail <> ''
+     and lower(student_email) = mail;
+
+  select * into profile from ah_profiles where id = me;
+  return profile;
+end;
+$$;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- RLS — deny by default, owner full, accepted counselor read-only
+-- ══════════════════════════════════════════════════════════════════════════
+
+alter table ah_profiles          enable row level security;
+alter table ah_exam_results      enable row level security;
+alter table ah_score_reports     enable row level security;
+alter table ah_university_lists  enable row level security;
+alter table ah_deadlines         enable row level security;
+alter table ah_portfolio         enable row level security;
+alter table ah_documents         enable row level security;
+alter table ah_checklist         enable row level security;
+alter table ah_counselor_links   enable row level security;
+
+-- Tables holding passports and transcripts are not readable by the anonymous
+-- role at all. RLS already denies it (no policy grants anon anything); this
+-- removes the privilege too, so a future policy mistake is not sufficient on
+-- its own.
+revoke all on ah_profiles, ah_exam_results, ah_score_reports, ah_university_lists,
+              ah_deadlines, ah_portfolio, ah_documents, ah_checklist, ah_counselor_links
+  from anon;
+
+-- ── profiles ──────────────────────────────────────────────────────────────
+drop policy if exists ah_profiles_own on ah_profiles;
+create policy ah_profiles_own on ah_profiles
+  for all to authenticated using (id = auth.uid()) with check (id = auth.uid());
+
+drop policy if exists ah_profiles_counselor_read on ah_profiles;
+create policy ah_profiles_counselor_read on ah_profiles
+  for select to authenticated using (ah_is_counselor_of(id));
+
+-- a student may see who invited them, but only them
+drop policy if exists ah_profiles_inviter_read on ah_profiles;
+create policy ah_profiles_inviter_read on ah_profiles
+  for select to authenticated using (ah_is_my_counselor(id));
+
+-- ── the per-student tables share one policy shape ─────────────────────────
+drop policy if exists ah_exam_results_own on ah_exam_results;
+create policy ah_exam_results_own on ah_exam_results
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists ah_exam_results_counselor_read on ah_exam_results;
+create policy ah_exam_results_counselor_read on ah_exam_results
+  for select to authenticated using (ah_is_counselor_of(user_id));
+
+drop policy if exists ah_university_lists_own on ah_university_lists;
+create policy ah_university_lists_own on ah_university_lists
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists ah_university_lists_counselor_read on ah_university_lists;
+create policy ah_university_lists_counselor_read on ah_university_lists
+  for select to authenticated using (ah_is_counselor_of(user_id));
+
+drop policy if exists ah_deadlines_own on ah_deadlines;
+create policy ah_deadlines_own on ah_deadlines
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists ah_deadlines_counselor_read on ah_deadlines;
+create policy ah_deadlines_counselor_read on ah_deadlines
+  for select to authenticated using (ah_is_counselor_of(user_id));
+
+drop policy if exists ah_portfolio_own on ah_portfolio;
+create policy ah_portfolio_own on ah_portfolio
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists ah_portfolio_counselor_read on ah_portfolio;
+create policy ah_portfolio_counselor_read on ah_portfolio
+  for select to authenticated using (ah_is_counselor_of(user_id));
+
+drop policy if exists ah_documents_own on ah_documents;
+create policy ah_documents_own on ah_documents
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists ah_documents_counselor_read on ah_documents;
+create policy ah_documents_counselor_read on ah_documents
+  for select to authenticated using (ah_is_counselor_of(user_id));
+
+drop policy if exists ah_checklist_own on ah_checklist;
+create policy ah_checklist_own on ah_checklist
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists ah_checklist_counselor_read on ah_checklist;
+create policy ah_checklist_counselor_read on ah_checklist
+  for select to authenticated using (ah_is_counselor_of(user_id));
+
+-- ── score reports: owner writes, counselor verifies ───────────────────────
+-- Split deliberately rather than `for all`, so the owner has no UPDATE policy
+-- and therefore cannot mark their own report verified.
+drop policy if exists ah_reports_own on ah_score_reports;
+drop policy if exists ah_reports_own_select on ah_score_reports;
+drop policy if exists ah_reports_own_insert on ah_score_reports;
+drop policy if exists ah_reports_own_delete on ah_score_reports;
+create policy ah_reports_own_select on ah_score_reports
+  for select to authenticated using (user_id = auth.uid());
+create policy ah_reports_own_insert on ah_score_reports
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()
+    and is_verified = false
+    and verified_by is null
+    and verified_at is null
+  );
+create policy ah_reports_own_delete on ah_score_reports
+  for delete to authenticated using (user_id = auth.uid());
+
+drop policy if exists ah_reports_counselor_read on ah_score_reports;
+create policy ah_reports_counselor_read on ah_score_reports
+  for select to authenticated using (ah_is_counselor_of(user_id));
+
+drop policy if exists ah_reports_counselor_verify on ah_score_reports;
+create policy ah_reports_counselor_verify on ah_score_reports
+  for update to authenticated
+  using (ah_is_counselor_of(user_id))
+  with check (ah_is_counselor_of(user_id));
+
+-- and column-level: the counselor's UPDATE privilege covers the verification
+-- columns and nothing else, so attesting to a report can never rewrite the
+-- evidence it attests to
+revoke update on ah_score_reports from authenticated;
+grant  update (is_verified, verified_by, verified_at) on ah_score_reports to authenticated;
+
+-- ── counselor links ───────────────────────────────────────────────────────
+drop policy if exists ah_links_counselor on ah_counselor_links;
+create policy ah_links_counselor on ah_counselor_links
+  for all to authenticated
+  using (counselor_id = auth.uid()) with check (counselor_id = auth.uid());
+
+drop policy if exists ah_links_student_read on ah_counselor_links;
+create policy ah_links_student_read on ah_counselor_links
+  for select to authenticated
+  using (lower(student_email) = lower(coalesce(auth.jwt() ->> 'email', '')) or student_id = auth.uid());
+
+-- the student answers the invite: accept, decline, or later revoke. They may
+-- only move the status between those three values, and may never re-point the
+-- link at a different student.
+drop policy if exists ah_links_student_accept on ah_counselor_links;
+create policy ah_links_student_accept on ah_counselor_links
+  for update to authenticated
+  using (lower(student_email) = lower(coalesce(auth.jwt() ->> 'email', '')) or student_id = auth.uid())
+  with check (
+    status in ('pending', 'active', 'revoked')
+    and (student_id = auth.uid() or student_id is null)
+  );
+
+-- ── function privileges ───────────────────────────────────────────────────
+revoke execute on function ah_ensure_profile(text, ah_role) from public, anon;
+grant  execute on function ah_ensure_profile(text, ah_role) to authenticated;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Storage: private, namespaced buckets, path-prefixed by user id
+--   ah-documents/{user_id}/{file}       — vault
+--   ah-score-reports/{user_id}/{file}   — official exam reports
+-- A counselor may READ files under a student's prefix once linked and accepted.
+-- ══════════════════════════════════════════════════════════════════════════
+insert into storage.buckets (id, name, public)
+values ('ah-documents', 'ah-documents', false),
+       ('ah-score-reports', 'ah-score-reports', false)
+on conflict (id) do nothing;
+
+drop policy if exists ah_storage_owner on storage.objects;
+create policy ah_storage_owner on storage.objects
+  for all to authenticated
+  using (
+    bucket_id in ('ah-documents', 'ah-score-reports')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id in ('ah-documents', 'ah-score-reports')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists ah_storage_counselor_read on storage.objects;
+create policy ah_storage_counselor_read on storage.objects
+  for select to authenticated
+  using (ah_can_read_object(bucket_id, name));
+
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Part 2 of 2 — document folders and counselor groups
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- AdmissionHack — 0002: document folders and counselor groups
+--
+-- Two additions, both guarded so this file can be applied on top of 0001 and
+-- re-applied safely.
+--
+--   1. A folder on every document, so a student's workspace has the shape a
+--      counselor actually expects: Tests, CV/Essays, Recommendation Letters,
+--      College List, Extracurricular Activities, Personal files.
+--
+--   2. Groups: a counselor creates one and shares a join code; a student enters
+--      the code to join. ENTERING THE CODE IS THE CONSENT — the student creates
+--      their own membership row, so a group grants a counselor nothing the
+--      student did not hand over. That is why there is no INSERT policy on
+--      ah_group_members at all: joining happens only through ah_join_group(),
+--      which validates the code.
+--
+-- The visibility rule itself lives in one place. `ah_is_counselor_of()` gains
+-- the group case, and because every table policy and the storage read helper
+-- already call it, group membership propagates to all nine tables and to files
+-- in storage without touching another policy.
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- ── folder on documents ───────────────────────────────────────────────────
+alter table ah_documents add column if not exists folder text not null default 'personal';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'ah_documents_folder_check') then
+    alter table ah_documents add constraint ah_documents_folder_check
+      check (folder in ('tests', 'cv-essays', 'recommendation-letters',
+                        'college-list', 'extracurriculars', 'personal'));
+  end if;
+end $$;
+create index if not exists ah_documents_folder_idx on ah_documents (user_id, folder);
+
+-- ── groups ────────────────────────────────────────────────────────────────
+create table if not exists ah_groups (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references ah_profiles on delete cascade,  -- the counselor
+  name       text not null,
+  -- short, unambiguous, shareable by voice or chat
+  join_code  text not null unique
+             default upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6)),
+  note       text,
+  created_at timestamptz not null default now()
+);
+create index if not exists ah_groups_owner_idx on ah_groups (owner_id);
+
+create table if not exists ah_group_members (
+  group_id   uuid not null references ah_groups on delete cascade,
+  student_id uuid not null references ah_profiles on delete cascade,
+  joined_at  timestamptz not null default now(),
+  primary key (group_id, student_id)
+);
+create index if not exists ah_group_members_student_idx on ah_group_members (student_id);
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Helpers
+-- ══════════════════════════════════════════════════════════════════════════
+
+create or replace function ah_owns_group(g uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (select 1 from ah_groups where id = g and owner_id = auth.uid());
+$$;
+
+create or replace function ah_is_group_member(g uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (select 1 from ah_group_members where group_id = g and student_id = auth.uid());
+$$;
+
+-- Lets a student see the name of the counselor whose group they joined.
+create or replace function ah_is_my_group_owner(counselor uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from ah_groups g
+    where g.owner_id = counselor and ah_is_group_member(g.id)
+  );
+$$;
+
+-- ── the one place visibility is decided ───────────────────────────────────
+create or replace function ah_is_counselor_of(student uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  -- an explicitly invited counselor, once the student accepted…
+  select exists (
+    select 1 from ah_counselor_links l
+    where l.student_id = student
+      and l.counselor_id = auth.uid()
+      and l.status = 'active'
+  )
+  -- …or a counselor whose group the student joined (joining is the consent)
+  or exists (
+    select 1
+    from ah_group_members m
+    join ah_groups g on g.id = m.group_id
+    where m.student_id = student
+      and g.owner_id = auth.uid()
+  );
+$$;
+
+-- ── joining ───────────────────────────────────────────────────────────────
+-- SECURITY DEFINER so a student can join from a code alone: they never need
+-- read access to the group table, so they cannot enumerate groups or codes.
+create or replace function ah_join_group(p_code text)
+returns ah_groups
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  me    uuid := auth.uid();
+  grp   ah_groups;
+begin
+  if me is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+
+  select * into grp from ah_groups where join_code = upper(trim(p_code));
+  if grp.id is null then
+    raise exception 'no group with that code' using errcode = 'P0002';
+  end if;
+
+  insert into ah_group_members (group_id, student_id)
+  values (grp.id, me)
+  on conflict do nothing;
+
+  return grp;
+end;
+$$;
+
+revoke execute on function ah_join_group(text) from public, anon;
+grant  execute on function ah_join_group(text) to authenticated;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- RLS
+-- ══════════════════════════════════════════════════════════════════════════
+alter table ah_groups        enable row level security;
+alter table ah_group_members enable row level security;
+
+revoke all on ah_groups, ah_group_members from anon;
+
+-- groups: the owner manages it; a member may read the one they joined
+drop policy if exists ah_groups_owner on ah_groups;
+create policy ah_groups_owner on ah_groups
+  for all to authenticated
+  using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+drop policy if exists ah_groups_member_read on ah_groups;
+create policy ah_groups_member_read on ah_groups
+  for select to authenticated using (ah_is_group_member(id));
+
+-- members: the owner sees the roster; a student sees and leaves only their own
+-- row. No INSERT policy on purpose — joining goes through ah_join_group().
+drop policy if exists ah_members_owner_read on ah_group_members;
+create policy ah_members_owner_read on ah_group_members
+  for select to authenticated using (ah_owns_group(group_id));
+
+drop policy if exists ah_members_self_read on ah_group_members;
+create policy ah_members_self_read on ah_group_members
+  for select to authenticated using (student_id = auth.uid());
+
+drop policy if exists ah_members_self_leave on ah_group_members;
+create policy ah_members_self_leave on ah_group_members
+  for delete to authenticated using (student_id = auth.uid());
+
+-- and the corresponding profile read, so a student knows who runs their group
+drop policy if exists ah_profiles_group_owner_read on ah_profiles;
+create policy ah_profiles_group_owner_read on ah_profiles
+  for select to authenticated using (ah_is_my_group_owner(id));
+
+-- ── check it worked ───────────────────────────────────────────────────────
+select
+  (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relname like 'ah\_%' and c.relrowsecurity) as tables_with_rls,
+  (select count(*) from pg_policies where schemaname = 'public' and policyname like 'ah\_%') as table_policies,
+  (select count(*) from storage.buckets where id like 'ah-%') as buckets,
+  (select count(*) from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal) as auth_users_triggers,
+  (select count(*) from auth.users) as existing_sathack_users;
