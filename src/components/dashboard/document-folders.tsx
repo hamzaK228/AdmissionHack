@@ -26,6 +26,48 @@ import { Eyebrow } from "@/components/ui";
  * counselor cannot open a file that never left the browser, so the UI must not
  * imply otherwise.
  */
+/** One stored file, with the state that matters: can a counselor open it, or not. */
+function FileRow({ f, onRemove }: { f: StoredFile; onRemove: (f: StoredFile) => void }) {
+  return (
+    <li className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2">
+      <span className="flex min-w-0 items-center gap-2">
+        <span aria-hidden>{fileIcon(f.name)}</span>
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-bold text-paper">{f.name}</span>
+          <span className="text-[10px] text-dim">
+            {formatSize(f.size)} ·{" "}
+            {new Date(f.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            {" · "}
+            {f.cloudPath ? (
+              <span className="text-mint">shared with your counselor</span>
+            ) : (
+              <span className="text-amber">on this device only</span>
+            )}
+          </span>
+        </span>
+      </span>
+      <span className="flex shrink-0 gap-1.5">
+        <button
+          type="button"
+          onClick={() => downloadStoredFile(f)}
+          aria-label={`Download ${f.name}`}
+          className="rounded border border-line px-2 py-1 text-[10px] font-bold text-fog hover:border-lime/50 hover:text-lime"
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(f)}
+          aria-label={`Remove ${f.name}`}
+          className="rounded border border-line px-2 py-1 text-[10px] text-dim hover:border-red/50 hover:text-red"
+        >
+          ✕
+        </button>
+      </span>
+    </li>
+  );
+}
+
 export function DocumentFolders() {
   const { user, configured } = useAuth();
   const [files, setFiles] = useState<StoredFile[]>([]);
@@ -44,6 +86,12 @@ export function DocumentFolders() {
 
   const inFolder = (f: FolderId) =>
     files.filter((x) => x.kind !== "score-report" && x.folder === f);
+
+  // Files from before this tab had folders carry no folder at all. They must stay
+  // visible and deletable, or the upgrade would silently hide someone's documents.
+  const unsorted = files.filter(
+    (f) => f.kind !== "score-report" && !DOC_FOLDERS.some((d) => d.id === f.folder),
+  );
 
   const upload = async (folder: FolderId, list: FileList | null) => {
     if (!list || list.length === 0) return;
@@ -209,50 +257,7 @@ export function DocumentFolders() {
                   {contents.length > 0 && (
                     <ul className="mt-3 space-y-2">
                       {contents.map((f) => (
-                        <li
-                          key={f.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2"
-                        >
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span aria-hidden>{fileIcon(f.name)}</span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-xs font-bold text-paper">
-                                {f.name}
-                              </span>
-                              <span className="text-[10px] text-dim">
-                                {formatSize(f.size)} ·{" "}
-                                {new Date(f.addedAt).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                                {" · "}
-                                {f.cloudPath ? (
-                                  <span className="text-mint">shared with your counselor</span>
-                                ) : (
-                                  <span className="text-amber">on this device only</span>
-                                )}
-                              </span>
-                            </span>
-                          </span>
-                          <span className="flex shrink-0 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => downloadStoredFile(f)}
-                              aria-label={`Download ${f.name}`}
-                              className="rounded border border-line px-2 py-1 text-[10px] font-bold text-fog hover:border-lime/50 hover:text-lime"
-                            >
-                              ↓
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => remove(f)}
-                              aria-label={`Remove ${f.name}`}
-                              className="rounded border border-line px-2 py-1 text-[10px] text-dim hover:border-red/50 hover:text-red"
-                            >
-                              ✕
-                            </button>
-                          </span>
-                        </li>
+                        <FileRow key={f.id} f={f} onRemove={remove} />
                       ))}
                     </ul>
                   )}
@@ -262,6 +267,21 @@ export function DocumentFolders() {
           );
         })}
       </div>
+
+      {unsorted.length > 0 && (
+        <section className="mt-3 rounded-2xl border border-amber/30 bg-amber/[0.04] p-4">
+          <Eyebrow>unsorted</Eyebrow>
+          <p className="mt-2 text-xs leading-relaxed text-dim">
+            These were in the vault before it had folders, so nothing has been thrown away — they are
+            just not filed yet. Download one and add it to the folder it belongs to.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {unsorted.map((f) => (
+              <FileRow key={f.id} f={f} onRemove={remove} />
+            ))}
+          </ul>
+        </section>
+      )}
 
       <p className="mt-6 text-xs leading-relaxed text-dim">
         <Eyebrow>where these go</Eyebrow>{" "}
