@@ -542,8 +542,9 @@ Everything that can be finished without you is finished.
 
 **Waiting on you, and only you:**
 
-1. **Publish.** Nothing is on GitHub: `gh` is not authenticated on this machine, and that needs your
-   browser. `./push-to-github.sh` handles the login and the push.
+1. ~~**Publish.**~~ **Done, 2026-10-13** — `gh` is authenticated on this machine as `hamzaK228` and all
+   commits are on `main` at https://github.com/hamzaK228/AdmissionHack (public, default branch `main`).
+   `./push-to-github.sh` stays for future pushes.
 2. **Turn off "Confirm email"** (Authentication → Email), or configure SMTP. Until then `signUp()`
    hits the default mailer's rate limit and no real account can finish signing up.
 3. **Delete the throwaway accounts** (`student@example.com`, `counselor@example.com`, password
