@@ -20,6 +20,39 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+### Accounts, sync and the counselor view — built, waiting on a database
+
+Everything except the provisioning is done, and the app is a complete product
+without it.
+
+- **`src/lib/supabase.ts`** — the client is **optional by design**. It returns
+  `null` when the env vars are unset and every call site treats that as
+  "run locally only". Every table is `ah_`-prefixed, so the schema can live in
+  `public` even in a database shared with another app — no custom-schema wiring.
+- **`src/lib/database.types.ts`** — hand-authored `Database` type matching the
+  migration, so table/column drift is a compile error. Replace with generated
+  types (`generate_typescript_types`) after provisioning.
+- **`src/lib/use-auth.ts`** — session + role, with `configured: false` flowing to
+  every consumer.
+- **`src/lib/workspace-sync.ts`** — whole-workspace push/pull in both directions.
+  A single applicant's workspace is tens of rows, so a full replace is simpler
+  and harder to get subtly wrong than a field-level merge; this is the layer that
+  changes if collaborative editing ever arrives. Plus `inviteStudent`,
+  `listLinkedStudents`, `pullStudentWorkspace`.
+- **`src/components/account/auth-panel.tsx`** — sign in / sign up with a **role
+  picker** (student · counselor · parent). With no backend it renders an honest
+  "accounts not configured" panel explaining the app is complete locally and what
+  the two env vars would enable — never a broken form. **Verified in the browser.**
+- **`src/components/account/counselor-view.tsx`** — invite students by email,
+  see the roster with pending/active status, and open any accepted student's
+  profile, universities, scores and deadlines read-only. Access is enforced by
+  RLS, not by this screen: guessing an id returns nothing.
+- Dashboard now has 10 tabs (account + counselor added).
+
+**Still blocked on provisioning** — applying the migration needs the project
+decision (free plan: 2 active slots, both held). `.env.example` documents the two
+variables; activation is then a two-minute step.
+
 ## Accounts + database (started, blocked on infrastructure)
 
 The user asked for real accounts, an official-score-report upload, and a counselor who can see many

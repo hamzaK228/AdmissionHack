@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore, type Profile, type PortfolioEntry, type PortfolioKind, type Tier } from "@/components/dashboard/store";
 import { MatchTab } from "@/components/dashboard/match-tab";
 import { ScoreReportUpload } from "@/components/dashboard/score-report-upload";
+import { AuthPanel } from "@/components/account/auth-panel";
+import { CounselorView } from "@/components/account/counselor-view";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
@@ -708,6 +710,8 @@ const TABS = [
   { id: "documents", label: "documents" },
   { id: "exams", label: "exams" },
   { id: "portfolio", label: "portfolio" },
+  { id: "who", label: "account" },
+  { id: "counselor", label: "counselor" },
   { id: "profile", label: "profile" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -910,6 +914,8 @@ export function DashboardClient({
         )}
         {tab === "exams" && <ExamsTab ieltsMinimums={ieltsMinimums} />}
         {tab === "portfolio" && <PortfolioTab />}
+        {tab === "who" && <AuthPanel />}
+        {tab === "counselor" && <CounselorView />}
         {tab === "profile" && (
           <div className="max-w-2xl">
             <ProfileWizard initial={profile} onDone={store.saveProfile} />
