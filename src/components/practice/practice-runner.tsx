@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { bankFor, sectionsFor } from "@/data/practice";
+import { companionHubFor } from "@/data/hubs";
 import type { Attempt, Question } from "@/data/practice/types";
 import { buildAttempt, formatClock, saveAttempt, scoreAttempt, shuffle } from "@/lib/practice";
 import { Eyebrow } from "@/components/ui";
@@ -22,6 +23,7 @@ type Phase = "intro" | "running" | "done";
  */
 export function PracticeRunner({ examId, examName }: { examId: string; examName: string }) {
   const bank = bankFor(examId);
+  const hub = companionHubFor(examId);
   const questions = useMemo(() => bank?.questions ?? [], [bank]);
   const byId = useMemo(() => new Map(questions.map((q) => [q.id, q])), [questions]);
 
@@ -146,8 +148,23 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
 
         <p className="mt-8 rounded-xl border border-line2 bg-panel/40 p-4 text-xs leading-relaxed text-dim">
           These questions are <span className="text-paper">original writing</span> in the style of the
-          exam, not released material from the testing body. They are for practice; use official
-          papers for a score you can rely on.
+          exam, not released material from the testing body — so treat them as a check on your
+          understanding, not as a score you can rely on.
+          {hub && (
+            <>
+              {" "}
+              For official questions, an adaptive diagnostic and full-length mocks, {hub.name} is the
+              deeper engine:{" "}
+              <a
+                href={hub.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-lime hover:underline"
+              >
+                open {hub.name} ↗
+              </a>
+            </>
+          )}
         </p>
 
         <p className="mt-4 text-xs text-dim">

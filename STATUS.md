@@ -640,6 +640,15 @@ from `docs/exam-hub-blueprint.md` is now real, with its first content.
   was exercised directly — `2` selected False, Enter revealed *correct* with the explanation.
 - Also this round: **`robots.txt`** — public pages allowed, `/dashboard` and `/auth/` disallowed, with
   the sitemap declared. The site had a sitemap and no robots policy.
+- **The user's SAThack site is now the SAT companion hub** (`src/data/hubs.ts`, keyed by exam so the
+  next exam site is a data entry rather than another special case in a page). The exam page shows it
+  beside our own practice set, and the practice intro — which used to say only "use official papers" —
+  now points at it.
+- The copy draws the line on **provenance**, which is the distinction that matters here: SAThack drills
+  **official College Board questions**, the in-platform set is **original writing**. Both are useful
+  and they are not interchangeable, so a student should know which one they are looking at.
+- The card says plainly that the **accounts are separate** and nothing is carried between the sites.
+  This is a hand-off, not single sign-on, and implying otherwise would be the easy lie.
 - Not built yet in this pillar: timed mock tests with a real score estimate, an adaptive section, and
   AI essay grading. Local practice history is not synced to the account — a counselor sees the entered
   scores, not the practice attempts.

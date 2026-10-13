@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { exams, examById } from "@/data/exams";
 import { hasPractice } from "@/data/practice";
+import { companionHubFor } from "@/data/hubs";
 import { universities } from "@/data/all";
 import { FactCard, DataNotice, Eyebrow } from "@/components/ui";
 import { Reveal } from "@/components/reveal";
@@ -31,6 +32,7 @@ export default async function ExamPage({ params }: { params: Promise<{ id: strin
   if (!exam) notFound();
 
   const accepting = universities.filter((u) => u.acceptedExams.includes(exam.id));
+  const hub = companionHubFor(exam.id);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
@@ -151,6 +153,34 @@ export default async function ExamPage({ params }: { params: Promise<{ id: strin
               </p>
             )}
           </div>
+
+          {hub && (
+            <div className="rounded-2xl border border-line bg-panel/70 p-6">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <Eyebrow>full {exam.name} hub</Eyebrow>
+                <span className="text-[10px] tracking-wide text-dim">separate site</span>
+              </div>
+              <p className="mt-3 text-base font-bold text-paper">{hub.name}</p>
+              <p className="mt-1 text-xs italic text-dim">&ldquo;{hub.tagline}&rdquo;</p>
+              <p className="mt-3 text-sm leading-relaxed text-fog">{hub.blurb}</p>
+              <ul className="mt-3 space-y-1.5">
+                {hub.facts.map((f) => (
+                  <li key={f} className="dash-item text-xs leading-relaxed text-dim">
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href={hub.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="anim-glow mt-4 inline-block rounded-lg bg-lime px-5 py-2.5 text-sm font-bold text-ink press-grow"
+              >
+                open {hub.name} ↗
+              </a>
+              <p className="mt-3 text-[11px] leading-relaxed text-dim">{hub.caveat}</p>
+            </div>
+          )}
 
           <a
             href={exam.officialSite}
