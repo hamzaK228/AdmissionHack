@@ -11,26 +11,40 @@ export interface AuthUser {
   fullName: string;
 }
 
+export type AuthResult =
+  | { ok: true; needsConfirmation?: boolean }
+  | { ok: false; error: string };
+
 const ROLES: readonly AhRole[] = ["student", "counselor", "parent"];
 const asRole = (v: unknown): AhRole =>
   typeof v === "string" && (ROLES as readonly string[]).includes(v) ? (v as AhRole) : "student";
 
+/** GoTrue reports an unconfirmed address in the message and, usually, a code. */
+const isUnconfirmed = (message: string, code?: string) =>
+  code === "email_not_confirmed" || /not confirmed/i.test(message);
+
 /**
- * Session + the user's role.
+ * Session, role, and the account lifecycle.
  *
  * Absent a configured backend every consumer sees `configured: false` and keeps
  * working entirely locally, so an unconfigured deploy is still a usable product
  * rather than a broken one.
  *
  * The profile row is created lazily, on first authenticated load, by
- * `ah_ensure_profile` — not by a trigger on `auth.users`. That keeps this
- * schema's faults out of the auth flow entirely, and the same call claims any
- * counselor invites already addressed to this email.
+ * `ah_ensure_profile` — not by a trigger on `auth.users`, which would put this
+ * schema's faults inside another app's signup transaction. The same call claims
+ * any counselor invites already addressed to the email.
+ *
+ * Whether a new signup is signed in immediately or has to click a link depends on
+ * the project's "Confirm email" setting, which is server-side: `signUp` reports
+ * which of the two happened rather than this layer assuming one.
  */
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** set when a sign-in failed only because the address is unconfirmed */
+  const [needsConfirmation, setNeedsConfirmation] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const sb = supabase();
@@ -65,7 +79,7 @@ export function useAuth() {
         .eq("id", data.user.id)
         .maybeSingle();
       if (row) {
-        role = row.role;
+        role = asRole(row.role);
         fullName = row.full_name ?? fullName;
       }
     } else if (prof) {
@@ -85,34 +99,89 @@ export function useAuth() {
     return () => sub.subscription.unsubscribe();
   }, [load]);
 
-  const signUp = async (email: string, password: string, role: AhRole, fullName: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    role: AhRole,
+    fullName: string,
+  ): Promise<AuthResult> => {
     const sb = supabase();
-    if (!sb) return { ok: false as const, error: "backend not configured" };
+    if (!sb) return { ok: false, error: "backend not configured" };
     setError(null);
-    const { error } = await sb.auth.signUp({
+    setNeedsConfirmation(null);
+    const { data, error } = await sb.auth.signUp({
       email,
       password,
-      options: { data: { role, full_name: fullName } },
+      options: {
+        data: { role, full_name: fullName },
+        emailRedirectTo: typeof location !== "undefined" ? `${location.origin}/dashboard` : undefined,
+      },
     });
     if (error) {
       setError(error.message);
-      return { ok: false as const, error: error.message };
+      return { ok: false, error: error.message };
     }
+    // with confirmation on, GoTrue returns a user but no session
+    const needsConfirmation = !data.session;
+    if (needsConfirmation) setNeedsConfirmation(email);
     await load();
-    return { ok: true as const };
+    return { ok: true, needsConfirmation };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<AuthResult> => {
     const sb = supabase();
-    if (!sb) return { ok: false as const, error: "backend not configured" };
+    if (!sb) return { ok: false, error: "backend not configured" };
     setError(null);
+    setNeedsConfirmation(null);
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
+      const code = (error as { code?: string }).code;
+      // an unconfirmed address is not a wrong password, and saying so is the
+      // difference between a user retrying and a user resending the email
+      if (isUnconfirmed(error.message, code)) {
+        setNeedsConfirmation(email);
+        const msg = "That email has not been confirmed yet.";
+        setError(msg);
+        return { ok: false, error: msg };
+      }
       setError(error.message);
-      return { ok: false as const, error: error.message };
+      return { ok: false, error: error.message };
     }
     await load();
-    return { ok: true as const };
+    return { ok: true };
+  };
+
+  /** Re-send the signup confirmation for an address that never got one. */
+  const resendConfirmation = async (email: string): Promise<AuthResult> => {
+    const sb = supabase();
+    if (!sb) return { ok: false, error: "backend not configured" };
+    const { error } = await sb.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: typeof location !== "undefined" ? `${location.origin}/dashboard` : undefined,
+      },
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  };
+
+  /** Email a password-reset link. The link returns to /auth/reset with a session. */
+  const requestPasswordReset = async (email: string): Promise<AuthResult> => {
+    const sb = supabase();
+    if (!sb) return { ok: false, error: "backend not configured" };
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: typeof location !== "undefined" ? `${location.origin}/auth/reset` : undefined,
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  };
+
+  /** Set a new password for the signed-in (or recovery) session. */
+  const updatePassword = async (password: string): Promise<AuthResult> => {
+    const sb = supabase();
+    if (!sb) return { ok: false, error: "backend not configured" };
+    if (password.length < 6) return { ok: false, error: "use at least 6 characters" };
+    const { error } = await sb.auth.updateUser({ password });
+    return error ? { ok: false, error: error.message } : { ok: true };
   };
 
   const signOut = async () => {
@@ -125,10 +194,14 @@ export function useAuth() {
     user,
     loading,
     error,
+    needsConfirmation,
     configured: isSupabaseConfigured,
     signIn,
     signUp,
     signOut,
+    resendConfirmation,
+    requestPasswordReset,
+    updatePassword,
     reload: load,
   };
 }
