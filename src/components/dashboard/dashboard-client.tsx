@@ -565,7 +565,7 @@ function OverviewTab({ uniIndex, onGo }: { uniIndex: Record<string, SlimUni>; on
 
         <button type="button" onClick={() => onGo("documents")} className="rounded-2xl border border-line bg-panel/70 p-5 text-left transition-colors hover:border-lime/40">
           <Eyebrow>documents</Eyebrow>
-          <p className="mt-3 text-sm font-bold text-paper">{docsDone} of {DOCS.length} prepared</p>
+          <p className="mt-3 text-sm font-bold text-paper">{docsDone} of {DOCS.length} requirements ready</p>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
             <div className="h-full rounded-full bg-gradient-to-r from-mint to-lime" style={{ width: `${(docsDone / DOCS.length) * 100}%` }} />
           </div>

@@ -11,10 +11,32 @@
  * Reads NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY from the
  * environment, falling back to .env.local. Both are publishable values.
  *
- * It creates two throwaway accounts on first run (the auth email rate limit
- * makes signing up through the API in a loop impractical, and the assertions
- * need a confirmed email). They are cleaned up by the script's own DELETE
- * calls, so it is safe to run repeatedly.
+ * REQUIRES the two test accounts below to already exist. It cannot create them:
+ * signUp() goes through GoTrue's mailer, which rate-limits hard on the default
+ * SMTP (429) and would leave the email unconfirmed anyway. Create them once by
+ * inserting into auth.users AND auth.identities — a bare auth.users row is not
+ * enough for password sign-in:
+ *
+ *   insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+ *                           email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+ *                           created_at, updated_at, confirmation_token, recovery_token,
+ *                           email_change_token_new, email_change)
+ *   values (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated',
+ *           'authenticated', 'student@example.com',
+ *           extensions.crypt('TestPassword123!', extensions.gen_salt('bf')), now(),
+ *           '{"provider":"email","providers":["email"]}'::jsonb,
+ *           '{"full_name":"Test Student","role":"student"}'::jsonb,
+ *           now(), now(), '', '', '', '');
+ *
+ *   -- repeat for counselor@example.com, then for each address:
+ *   insert into auth.identities (user_id, provider_id, identity_data, provider,
+ *                                last_sign_in_at, created_at, updated_at)
+ *   select id, email,
+ *          jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true),
+ *          'email', now(), now(), now()
+ *   from auth.users where email = 'student@example.com';
+ *
+ * The assertions clean up after themselves, so it is safe to run repeatedly.
  */
 
 import { readFileSync } from "node:fs";
@@ -55,7 +77,12 @@ async function signIn(email) {
     body: JSON.stringify({ email, password: TEST_PASSWORD }),
   });
   const j = await r.json();
-  if (!j.access_token) throw new Error(`${email} sign-in failed: ${JSON.stringify(j).slice(0, 300)}`);
+  if (!j.access_token) {
+    throw new Error(
+      `${email} could not sign in: ${JSON.stringify(j).slice(0, 220)}\n` +
+        "This suite needs its two throwaway accounts to exist first — see the header of this file.",
+    );
+  }
   return { token: j.access_token, id: j.user.id, email };
 }
 
