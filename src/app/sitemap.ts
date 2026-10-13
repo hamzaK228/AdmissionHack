@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
-import { universities } from "@/data/universities";
-import { countries } from "@/data/countries";
-import { exams } from "@/data/exams";
-import { journeySteps } from "@/data/journey";
+// The FULL merged directory, not the curated subset in ./universities — importing
+// the curated list here silently dropped ~1,456 university pages from the sitemap,
+// which is precisely the content search engines are meant to find. ./all re-exports
+// the merged set from ./directory.
+import { universities, countries, exams, journeySteps } from "@/data/all";
 
 /**
  * The site's own origin, kept as one knob because the brand and domain are still

@@ -39,3 +39,7 @@ yarn-error.log*
 
 # zcode
 .zcodeignore
+
+# env — but keep the example, it is the file that documents the configuration
+.env*
+!.env.example
