@@ -190,7 +190,7 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
               {current.context}
             </p>
           )}
-          <p className="text-base leading-relaxed text-paper">{current.prompt}</p>
+          <p className="whitespace-pre-line text-base leading-relaxed text-paper">{current.prompt}</p>
 
           <ul className="mt-5 space-y-2">
             {current.choices.map((c, i) => {
@@ -357,7 +357,7 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
                   {q.context && (
                     <p className="mt-2 text-xs leading-relaxed text-dim">{q.context}</p>
                   )}
-                  <p className="mt-2 text-sm leading-relaxed text-paper">{q.prompt}</p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-paper">{q.prompt}</p>
                   <p className="mt-3 text-xs text-mint">
                     answer: {q.answer} — {q.choices.find((c) => c.id === q.answer)?.text}
                   </p>

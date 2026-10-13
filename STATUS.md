@@ -606,6 +606,44 @@ mind: the free plan gives 1 GB of storage, which student documents will eventual
   change-password controls. The emailed round trip itself cannot be verified while the mailer is
   rate-limited — that is the honest limit of this check.
 
+## Pillar 3 started — the exam academy (2026-10-13)
+
+The largest hole in the product, and the place the user's own SAT site plugs in. The shared engine
+from `docs/exam-hub-blueprint.md` is now real, with its first content.
+
+- `src/data/practice/` — exam-agnostic question types plus an **SAT bank of 24 original questions**
+  (12 Math, 12 Reading & Writing). Every answer is verifiable by construction and every explanation
+  says why the wrong choices are wrong; a practice question with no defensible explanation teaches
+  nothing.
+- **The questions are original writing in the exam's style — not released material from a testing
+  body** — and the intro screen says so. That matters twice over: copied questions would make the hub
+  worthless, and labelled practice must never be confused with an official score.
+- `src/lib/practice.ts` — scoring, section breakdown and history. An unanswered question counts as
+  wrong, because on the real test it is.
+- `/exams/[id]/practice` — intro → runner → results. Instant feedback rather than a silent scored test,
+  because that is how practice teaches; the clock counts up and never cuts anyone off; answers are
+  scored only when asked for, so a stray click costs nothing; 1–4/A–D and Enter drive it from the
+  keyboard.
+- Results: score, per-section bars, time, a review list of what was missed with its explanations, and
+  "retry the N I missed" which re-runs exactly those. The dashboard exams tab shows the history, so the
+  promise that attempts are kept is real rather than dangling.
+- **Adding an exam is one content file plus one registry line** — now confirmed rather than claimed.
+  The IELTS Academic Reading bank (12 questions on two passages, including three-choice
+  True/False/Not Given) went in as `src/data/practice/ielts.ts` plus one line in the registry, with
+  **no change to the engine**, and the runner needed nothing to handle a 3-choice question. The
+  passage is carried on every question rather than once per group, deliberately: the runner shuffles,
+  so a question must bring its own context or a shuffled set would show one passage beside another's
+  question.
+- Verified by driving the whole set in the browser: 6/24 with always-choice-A, split Reading & Writing
+  5/12 and Math 1/12, which is arithmetic one can check by hand; the retry then re-ran exactly the 18
+  missed, and the attempt appeared in the dashboard as *weakest: Math*. For IELTS, the keyboard path
+  was exercised directly — `2` selected False, Enter revealed *correct* with the explanation.
+- Also this round: **`robots.txt`** — public pages allowed, `/dashboard` and `/auth/` disallowed, with
+  the sitemap declared. The site had a sitemap and no robots policy.
+- Not built yet in this pillar: timed mock tests with a real score estimate, an adaptive section, and
+  AI essay grading. Local practice history is not synced to the account — a counselor sees the entered
+  scores, not the practice attempts.
+
 ## Document folders and counselor groups (2026-10-13)
 
 Migration `0002_document_folders_and_groups.sql`, applied to the live project.

@@ -1,14 +1,15 @@
 import { satBank } from "./sat";
+import { ieltsBank } from "./ielts";
 import type { PracticeBank, Question } from "./types";
 
 /**
  * The practice registry.
  *
- * One entry per exam that has content. Adding IELTS or TOEFL is a new file next
- * to `sat.ts` plus a line here — which is the point of the blueprint: the engine
- * does not change when an exam is added.
+ * One entry per exam that has content, so adding an exam is a new file beside
+ * `sat.ts` plus a line here — which is the point of the blueprint: the engine does
+ * not change when an exam is added.
  */
-const banks: PracticeBank[] = [satBank];
+const banks: PracticeBank[] = [satBank, ieltsBank];
 
 export function bankFor(examId: string): PracticeBank | null {
   return banks.find((b) => b.set.examId === examId) ?? null;
