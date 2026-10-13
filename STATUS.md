@@ -20,6 +20,35 @@ threshold 0 — tall elements), floating badges, infinite exam marquee, pulsing 
 lift + glow on cards, bar-fill animations. No animation library — pure CSS keyframes + one small
 client Reveal component.
 
+## Scroll-scrubbed text (anime.js) (Sept 27, 2026)
+
+Added the reference's signature text motion: statement/heading words reveal
+**left-to-right as you scroll**, scrubbed against scroll position rather than
+fired on entry.
+
+- `src/components/motion/scroll-words.tsx` — splits a heading into per-word
+  spans and drives them with anime.js `animate(words, { opacity: [0.3, 1],
+  delay: stagger(0.6), autoplay: onScroll({ target, enter: "bottom",
+  leave: "top", sync: "linear" }) })`. Wired into the home manifesto and every
+  `PageHero` title (plain-string titles only; ReactNode titles fall through).
+- **API read from the installed package, not the docs.** animejs.com is
+  JS-rendered so fetching it returns only the marketing shell; the authoritative
+  source is `node_modules/animejs/dist/modules/types/index.d.ts`, which shows
+  `sync?: boolean | number | string | EasingParam` and **no** `syncSmooth` — a
+  guess there cost one failed typecheck.
+- **Progressive-enhancement guard.** Scrubbed interpolation runs on the
+  animation-frame loop, which browsers throttle. The words start at 0.3 (never
+  0) and an `onUpdate` proof watches for real progress; if none arrives within
+  1.2s the animation reverts, leaving the heading at full opacity rather than
+  parked dim forever. Verified: after the guard fires, all 9 words read
+  `opacity: 1`.
+
+**Verification honesty:** the scrub itself cannot be visually confirmed in this
+harness because its rAF is throttled. The mechanism matches the installed type
+signatures and the fallback is verified; the CSS-variable-driven scroll motion
+(filmstrip, planet dissolve, aurora parallax, scroll rail, reveals) is the part
+verified end-to-end.
+
 ## Full design pass (Sept 27, 2026) — after installing the motion skill
 
 Audited the code against the Motion skill's rules first: **clean** — no `framer-motion` imports,

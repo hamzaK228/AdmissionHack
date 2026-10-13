@@ -10,6 +10,7 @@ import { SystemPath } from "@/components/motion/system-path";
 import { CountUp } from "@/components/motion/count-up";
 import { Starfield } from "@/components/globe/starfield";
 import { WelcomeLine } from "@/components/welcome-line";
+import { ScrollWords } from "@/components/motion/scroll-words";
 import { JourneyScroller } from "@/components/journey-scroller";
 import { UniversityGlobe } from "@/components/globe/university-globe";
 
@@ -182,10 +183,11 @@ export default function HomePage() {
             </p>
           </Reveal>
           <Reveal delay={90}>
-            <h2 className="mt-8 text-4xl font-bold leading-[1.06] tracking-tight text-paper sm:text-7xl">
-              Admission rewards the people
-              <br className="hidden sm:block" /> who <span className="text-lime">knew the system</span>.
-            </h2>
+            <ScrollWords
+              text="Admission rewards the people who knew the system."
+              accent="knew the system"
+              className="mt-8 block text-4xl font-bold leading-[1.06] tracking-tight text-paper sm:text-7xl"
+            />
           </Reveal>
           <Reveal delay={180}>
             <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-fog">

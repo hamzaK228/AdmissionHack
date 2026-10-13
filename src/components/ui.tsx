@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ScrollWords } from "@/components/motion/scroll-words";
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (
@@ -37,9 +38,17 @@ export function PageHero({
       {/* scroll-linked: drifts and fades as you leave the hero */}
       <div className="hero-copy relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="headline-gradient mt-6 max-w-4xl text-5xl font-bold leading-[1.03] tracking-tight sm:text-7xl">
-          {title}
-        </h1>
+        {typeof title === "string" ? (
+          <ScrollWords
+            text={title}
+            as="h1"
+            className="headline-gradient mt-6 block max-w-4xl text-5xl font-bold leading-[1.03] tracking-tight sm:text-7xl"
+          />
+        ) : (
+          <h1 className="headline-gradient mt-6 max-w-4xl text-5xl font-bold leading-[1.03] tracking-tight sm:text-7xl">
+            {title}
+          </h1>
+        )}
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-fog">{description}</p>
         {children}
       </div>
