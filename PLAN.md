@@ -228,4 +228,5 @@ splitting it across sites a solo founder can't maintain.
 | 4 | Exam scope at launch | ✅ Researched — [research/exams.md](research/exams.md). **SAT hub already in progress**; Tier 1 launch: SAT + IELTS + TOEFL + Duolingo DET; Tier 1.5 new-opportunity bet: CSCA (mandatory China-bound exam from 2026–27, no competition yet); Tier 2: ACT, PTE, GRE, GMAT, AP; Tier 3: corridor/niche exams |
 | 5 | Mentorship model | ⬜ Proposed: 1:1 sessions + structured packages from day one of Phase 4 — needs your confirm |
 | 6 | Brand name & domain | ⬜ Open — "AdmissionHack" placeholder until we decide |
-| 7 | Tech stack | ⬜ Open — recommendation ready once we lock the name (Section 8 has candidate stacks) |
+| 7 | Tech stack | ✅ Decided in practice — Next.js 16 (App Router) + TypeScript + Tailwind 4, Supabase for Postgres/auth/storage. Section 8's comparison is kept for the record |
+| 8 | Accounts & data | ✅ Built — accounts, cloud sync, document folders and counselor groups are live on Supabase; local-first with the browser as the student's own copy. See STATUS.md |

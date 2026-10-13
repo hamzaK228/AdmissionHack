@@ -4,7 +4,6 @@ import { universities, countries } from "@/data/all";
 import { exams } from "@/data/exams";
 import { CtaCard, SectionHeading, Eyebrow } from "@/components/ui";
 import { Reveal } from "@/components/reveal";
-import { TerminalHero } from "@/components/terminal-hero";
 import { ExamMarquee } from "@/components/exam-marquee";
 import { SystemPath } from "@/components/motion/system-path";
 import { CountUp } from "@/components/motion/count-up";

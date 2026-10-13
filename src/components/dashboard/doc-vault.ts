@@ -2,7 +2,12 @@
 
 /**
  * Document vault — real file storage in the visitor's browser via IndexedDB.
- * Files never leave the device; download and delete are fully local.
+ *
+ * This is the student's own copy and it works with no account at all: download
+ * and delete are fully local. It is not the whole story any more — when the
+ * student is signed in, the folder workspace also mirrors each file into cloud
+ * storage so a counselor can open it, and records that fact here as `cloudPath`.
+ * A file WITHOUT a `cloudPath` is genuinely local-only, and the UI says so.
  */
 
 const DB_NAME = "admissionhack-files";

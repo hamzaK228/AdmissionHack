@@ -791,7 +791,13 @@ export function DashboardClient({
           <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">
             <DocumentFolders />
             <aside>
-              <Eyebrow>document checklist</Eyebrow>
+              <Eyebrow>application requirements</Eyebrow>
+              <p className="mt-3 text-xs leading-relaxed text-dim">
+                Two different things live on this tab. The folders on the left are where the{" "}
+                <em>files</em> go; this list is the application&rsquo;s own checklist — tick an item
+                once it is genuinely ready. Some items are a process rather than a document, like the
+                APS certificate, so they have no folder of their own.
+              </p>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-line">
                 <div className="h-full rounded-full bg-gradient-to-r from-mint to-lime transition-[width] duration-500"
                   style={{ width: `${(docsDone / DOCS.length) * 100}%` }} />

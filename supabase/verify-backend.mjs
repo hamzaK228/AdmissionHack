@@ -178,6 +178,52 @@ const ver = await patch(`ah_score_reports?user_id=eq.${student.id}`, counselor.t
 });
 check("counselor can verify the score report", ver.body?.[0]?.is_verified === true, JSON.stringify(ver.body).slice(0, 200));
 
+// ── the report file itself, in its own bucket ───────────────────────────
+const RPT_PATH = `${student.id}/sat.pdf`;
+const signReport = (tok, p) =>
+  fetch(`${U}/storage/v1/object/sign/ah-score-reports/${p}`, {
+    method: "POST",
+    headers: { ...H(tok), "Content-Type": "application/json" },
+    body: JSON.stringify({ expiresIn: 600 }),
+  });
+
+const rptUp = await fetch(`${U}/storage/v1/object/ah-score-reports/${RPT_PATH}`, {
+  method: "POST",
+  headers: {
+    apikey: K,
+    Authorization: `Bearer ${student.token}`,
+    "Content-Type": "application/pdf",
+    "x-upsert": "true",
+  },
+  body: new TextEncoder().encode("%PDF-1.4 fake SAT report for the verification run"),
+});
+check(
+  "student uploads the official report into ah-score-reports",
+  rptUp.status < 300,
+  `http ${rptUp.status} ${(await rptUp.text()).slice(0, 140)}`,
+);
+
+const cSign = await signReport(counselor.token, RPT_PATH);
+const cSignBody = await cSign.json().catch(() => null);
+check(
+  "the accepted counselor can open the official report",
+  cSign.status < 300 && !!cSignBody?.signedURL,
+  JSON.stringify(cSignBody).slice(0, 140),
+);
+
+if (cSignBody?.signedURL) {
+  const got = await fetch(`${U}/storage/v1${cSignBody.signedURL}`);
+  const bytes = await got.text();
+  check(
+    "…and receives the actual bytes",
+    got.status < 300 && bytes.includes("fake SAT report"),
+    `http ${got.status}`,
+  );
+}
+
+const strayReport = await signReport(counselor.token, `${student.id}/not-a-report.pdf`);
+check("a report path that does not exist is not a way in", strayReport.status >= 400, `http ${strayReport.status}`);
+
 const tamper = await patch(`ah_score_reports?user_id=eq.${student.id}`, counselor.token, { file_name: "tampered.pdf" });
 check(
   "counselor CANNOT rewrite the report it attested to",

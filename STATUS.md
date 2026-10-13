@@ -492,10 +492,39 @@ Project **`admissionhack`** (`nkqjlccomtcqwsawbndp`) in the **AdmissionHack** or
 - **Signup needs one dashboard toggle**: Authentication → Email → turn *off* "Confirm email".
   With it on, `signUp` sends a confirmation mail and the default SMTP is rate-limited (429), so a
   real signup cannot complete until that is off or SMTP is configured.
-- **Vault documents now reach the cloud** (see the folders section below). Score reports are still
-  IndexedDB-only: the `ah-score-reports` bucket, the `ah_score_reports` table and their RLS exist
-  and are verified, but `score-report-upload.tsx` has not been switched over, so a counselor
-  cannot yet open the official exam report itself — only the numbers.
+- **Files reach the cloud, official reports included.** Vault documents go to the `ah-documents`
+  bucket and score reports to `ah-score-reports`; a counselor's read-only panel lists both and opens
+  them through short-lived signed URLs, and can mark a report verified. The student sees that state.
+
+## Consistency pass (2026-10-13)
+
+- **Score reports went to the cloud** — finally the piece that was written but not wired.
+  `uploadScoreReport` / `listCloudReports` / `setReportVerified` / `signedReportUrl`, and the
+  student's block now says which state each file is in: *on this device only*, *shared with your
+  counselor*, or *verified by your counselor*.
+- **Fixed a bug I had introduced myself:** `deleteCloudFile` keyed the row deletion on a row id the
+  caller never had (I passed `""`), so it removed the object and left the row behind — which reads
+  to a counselor as a link that opens nothing. Both deletes now key on `file_path`, which is what
+  the caller actually holds.
+- **A counselor can verify a report from the UI.** The column-level grant and the update policy
+  existed and were proven by the script, but no screen offered the control, so the feature was only
+  half-reachable.
+- **Files added while signed out can now be shared** (the `↑` action) rather than forcing the
+  student to delete and re-add them.
+- **The checklist and the folders are no longer presented as the same thing.** They are different
+  axes — the application's requirements versus where files live — and the tab now says so instead of
+  leaving the reader to work it out. The list was renamed accordingly.
+- **Removed dead code:** `welcome-strip.tsx` was referenced by nothing, and `terminal-hero.tsx` was
+  imported by the home page but never rendered. Also corrected a stale header comment in `doc-vault.ts`
+  that still claimed files never leave the device.
+- **`PLAN.md`'s decision table** no longer lists the tech stack as open; stack and accounts/data are
+  marked decided, with a pointer to STATUS.md.
+- **39/39** — the script now also proves the student uploads a report into `ah-score-reports`, the
+  accepted counselor can mint a signed link **and receive the bytes**, and a report path that does
+  not exist is not a way in.
+- Walked in the browser: the counselor's panel renders `Personal files → passport.pdf → open ↗` and
+  `official reports → sat.pdf · sat · verified → open ↗ / unverify`; the student's exams tab renders
+  `official SAT report · 1 file on record · ✓ verified by a counselor`.
 
 ## Document folders and counselor groups (2026-10-13)
 

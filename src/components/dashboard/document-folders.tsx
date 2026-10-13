@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DOC_FOLDERS, type FolderId } from "@/data/document-folders";
+import { DOC_FOLDERS, isFolderId, type FolderId } from "@/data/document-folders";
 import {
   addFiles,
   deleteFile,
@@ -27,7 +27,16 @@ import { Eyebrow } from "@/components/ui";
  * imply otherwise.
  */
 /** One stored file, with the state that matters: can a counselor open it, or not. */
-function FileRow({ f, onRemove }: { f: StoredFile; onRemove: (f: StoredFile) => void }) {
+function FileRow({
+  f,
+  onRemove,
+  onShare,
+}: {
+  f: StoredFile;
+  onRemove: (f: StoredFile) => void;
+  /** absent when signed out — there is nobody to share with */
+  onShare?: (f: StoredFile) => void;
+}) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2">
       <span className="flex min-w-0 items-center gap-2">
@@ -47,6 +56,17 @@ function FileRow({ f, onRemove }: { f: StoredFile; onRemove: (f: StoredFile) => 
         </span>
       </span>
       <span className="flex shrink-0 gap-1.5">
+        {!f.cloudPath && onShare && (
+          <button
+            type="button"
+            onClick={() => onShare(f)}
+            aria-label={`Share ${f.name} with your counselor`}
+            title="share with your counselor"
+            className="rounded border border-line px-2 py-1 text-[10px] font-bold text-amber hover:border-lime/50 hover:text-lime"
+          >
+            ↑
+          </button>
+        )}
         <button
           type="button"
           onClick={() => downloadStoredFile(f)}
@@ -133,9 +153,26 @@ export function DocumentFolders() {
 
   const remove = async (f: StoredFile) => {
     const removed = await deleteFile(f.id);
-    if (removed?.cloudPath) await deleteCloudFile("", removed.cloudPath);
+    if (removed?.cloudPath) await deleteCloudFile(removed.cloudPath);
     await refresh();
     setMsg({ tone: "ok", text: `${f.name} removed.` });
+  };
+
+  /** Share a file that was added before the student signed in (or while signed out). */
+  const share = async (f: StoredFile) => {
+    const folder = f.folder;
+    if (!folder || !isFolderId(folder)) {
+      setMsg({ tone: "err", text: "file it into a folder first, then share it." });
+      return;
+    }
+    const res = await uploadDocument(new File([f.blob], f.name, { type: f.type }), folder);
+    if (!res.ok) {
+      setMsg({ tone: "err", text: res.error });
+      return;
+    }
+    await markFileUploaded(f.id, res.value.path);
+    await refresh();
+    setMsg({ tone: "ok", text: `${f.name} shared — your counselor can open it now.` });
   };
 
   const signInHint = configured && !user;
@@ -257,7 +294,12 @@ export function DocumentFolders() {
                   {contents.length > 0 && (
                     <ul className="mt-3 space-y-2">
                       {contents.map((f) => (
-                        <FileRow key={f.id} f={f} onRemove={remove} />
+                        <FileRow
+                          key={f.id}
+                          f={f}
+                          onRemove={remove}
+                          onShare={user ? share : undefined}
+                        />
                       ))}
                     </ul>
                   )}
@@ -277,7 +319,7 @@ export function DocumentFolders() {
           </p>
           <ul className="mt-3 space-y-2">
             {unsorted.map((f) => (
-              <FileRow key={f.id} f={f} onRemove={remove} />
+              <FileRow key={f.id} f={f} onRemove={remove} onShare={user ? share : undefined} />
             ))}
           </ul>
         </section>
