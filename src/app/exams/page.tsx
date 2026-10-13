@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { hasPractice } from "@/data/practice";
 import type { Metadata } from "next";
 import { exams } from "@/data/exams";
 import { PageHero } from "@/components/ui";
@@ -74,6 +75,11 @@ export default function ExamsPage() {
                         <span className="rounded-md border border-mint/40 bg-mint/10 px-2 py-0.5 text-[11px] text-mint">
                           {exam.feeUsd}
                         </span>
+                        {hasPractice(exam.id) && (
+                          <span className="rounded-md border border-lime/50 bg-lime/10 px-2 py-0.5 text-[11px] font-bold text-lime">
+                            practice ready
+                          </span>
+                        )}
                       </div>
                     </Link>
                   </Reveal>
