@@ -79,9 +79,17 @@ export function SiteFooter() {
             </div>
           ))}
         </div>
-        <div className="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-xs text-dim sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-3 border-t border-line pt-6 text-xs text-dim sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} AdmissionHack — data is community-contributed, always verify on official sites.</p>
-          <p className="text-lime/70">$ exit 0</p>
+          <p className="flex items-center gap-3">
+            <Link href="/privacy" className="font-bold transition-colors hover:text-lime">
+              privacy
+            </Link>
+            <Link href="/terms" className="font-bold transition-colors hover:text-lime">
+              terms
+            </Link>
+            <span className="text-lime/70">$ exit 0</span>
+          </p>
         </div>
       </div>
     </footer>

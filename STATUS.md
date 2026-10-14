@@ -1117,3 +1117,28 @@ Two asks: finish the board, then build something playful.
   wrong thing faster than it entertained. Growing the deck is data entry, not code.
 - Linked from the header and the footer, and in the sitemap. `tsc` clean, 1,560-page build.
 
+## Legal documents (2026-10-14)
+
+`/privacy` and `/terms` are live, linked from the footer and from the sign-up form, and in the sitemap.
+
+- **Written from the code, not from a template.** Every claim is something the system actually does, and a
+  policy that claimed otherwise would be worse than none. The distinctive facts are the ones worth stating:
+  **no analytics, no advertising, no tracking, no error-reporting SDK, and not a single cookie** — verified
+  rather than assumed (the only runtime dependencies are `supabase-js`, `react`, `next`, `motion` and
+  `animejs`; the session lives in `localStorage`).
+- Disclosures that are specific because boilerplate would be false here: the workspace is browser-first and
+  only syncs when you sign in; the database and files sit in **Seoul**; a counselor sees nothing until you
+  accept them and gets read-only access you can revoke at any moment; **a recommendation letter contains a
+  third party's personal information**; and **essay drafts are sent to DeepSeek** under DeepSeek's terms
+  rather than ours.
+- The Terms carry the two sections this product actually needs. **Acceptable use** for the board — no
+  doxxing, no impersonation, no soliciting or essay-selling, no reaching another student's data. And
+  **academic integrity**: we do not write essays, the reviewer can be wrong and has not read the rest of the
+  file, and universities' rules on AI assistance vary widely and are the student's responsibility to follow.
+- **Not legal advice, and the gaps are written down rather than glossed over** in `docs/legal.md`: the seven
+  visible `[PLACEHOLDERS]` that must be filled before launch; whether the AI provider retains or trains on
+  submitted drafts (a disclosure problem if it does — and fixable by environment variable, since the route
+  is provider-agnostic); and the issue most likely to be missed, that **this service holds passports and
+  family financial documents for people who may be minors**, which needs a named age policy and, when a
+  school uses it with a class, a data processing agreement.
+

@@ -306,6 +306,21 @@ export function AuthPanel() {
         </div>
       </form>
 
+      {mode === "signup" && (
+        <p className="mt-4 text-xs leading-relaxed text-dim">
+          Creating an account means you agree to our{" "}
+          <Link href="/terms" className="text-lime/80 hover:text-lime">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="text-lime/80 hover:text-lime">
+            Privacy Policy
+          </Link>
+          . Your workspace stays in this browser until you sign in — signing in is what copies it to the
+          cloud so it can be restored and read by a counselor you accept.
+        </p>
+      )}
+
       {mode === "reset" && (
         <p className="mt-4 text-xs leading-relaxed text-dim">
           Prefer to do it in the app?{" "}
