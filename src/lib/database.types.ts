@@ -59,6 +59,51 @@ export type Database = {
           },
         ];
       };
+      /* The board's two tables (migration 0004). `author_id` and `author_name` are
+         optional on insert on purpose: a trigger stamps them from the session, so a
+         client cannot post under someone else's name. */
+      ah_comments: {
+        Row: {
+          author_id: string;
+          author_name: string;
+          body: string;
+          created_at: string;
+          id: string;
+          post_id: string;
+        };
+        Insert: {
+          author_id?: string;
+          author_name?: string;
+          body: string;
+          created_at?: string;
+          id?: string;
+          post_id: string;
+        };
+        Update: {
+          author_id?: string;
+          author_name?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_comments_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ah_comments_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ah_counselor_links: {
         Row: {
           counselor_id: string;
@@ -318,6 +363,47 @@ export type Database = {
           {
             foreignKeyName: "ah_portfolio_user_id_fkey";
             columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ah_posts: {
+        Row: {
+          author_id: string;
+          author_name: string;
+          body: string;
+          created_at: string;
+          id: string;
+          title: string;
+          topic: string;
+          updated_at: string;
+        };
+        Insert: {
+          author_id?: string;
+          author_name?: string;
+          body: string;
+          created_at?: string;
+          id?: string;
+          title: string;
+          topic?: string;
+          updated_at?: string;
+        };
+        Update: {
+          author_id?: string;
+          author_name?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          title?: string;
+          topic?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_posts_author_id_fkey";
+            columns: ["author_id"];
             isOneToOne: false;
             referencedRelation: "ah_profiles";
             referencedColumns: ["id"];

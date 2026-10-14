@@ -15,6 +15,7 @@ import { OfferComparison } from "@/components/dashboard/offer-comparison";
 import { WritingCoach } from "@/components/dashboard/writing-coach";
 import { RequirementChecker } from "@/components/dashboard/requirement-checker";
 import { ArrivalTimeline } from "@/components/dashboard/arrival-timeline";
+import { Community } from "@/components/dashboard/community";
 import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
@@ -551,6 +552,7 @@ const TABS = [
   { id: "exams", label: "exams" },
   { id: "portfolio", label: "portfolio" },
   { id: "writing", label: "writing ✍" },
+  { id: "board", label: "board 💬" },
   { id: "who", label: "account" },
   { id: "counselor", label: "counselor" },
   { id: "profile", label: "profile" },
@@ -782,6 +784,7 @@ export function DashboardClient({
         {tab === "exams" && <ExamsTab ieltsMinimums={ieltsMinimums} />}
         {tab === "portfolio" && <PortfolioTab />}
         {tab === "writing" && <WritingCoach />}
+        {tab === "board" && <Community />}
         {tab === "who" && (
           <div className="space-y-8">
             <AuthPanel />

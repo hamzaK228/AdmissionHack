@@ -1027,3 +1027,29 @@ still cost someone the year happens after it, and until now the product simply s
   because the financial statement has to age in the account *while* you are still deciding. The assertion
   was corrected to test the property that actually holds. `tsc` and a 1,558-page build pass.
 
+## The student board — Phase 4's community half (2026-10-14)
+
+`supabase/migrations/0004_community.sql`, applied to the shared project. Additive, `ah_`-prefixed and
+idempotent, like the rest; it never goes near another app's tables.
+
+- Two tables (`ah_posts`, `ah_comments`), RLS on both, **8 policies**, and one stamping trigger.
+- **Author identity is stamped by the database, not sent by the client.** `ah_stamp_author()` overwrites
+  `author_id` from the session and reads `author_name` from the author's own profile row. That settles two
+  problems at once: nobody can post under someone else's name, and the board never has to read another
+  student's profile — which matters because `ah_profiles` is deliberately closed, and widening it for the
+  convenience of one column would leak the whole profile table.
+- **This is the only shared surface in the app, so it is the only thing that needs an account.** The rest
+  of the workspace still works signed-out and offline, and the tab says so plainly rather than offering a
+  composer that fails on submit.
+- **Verified against the real API rather than by inspection:** an anonymous read returns `200 []` (the
+  policies return no rows) and an anonymous write is refused with
+  `42501 new row violates row-level security policy` — for both tables. Row counts confirm neither probe
+  wrote anything, and SAThack's own tables were checked afterwards and are untouched (5,040 questions, 114
+  profiles).
+- **Two honest limits, in the UI as well as here.** There is **no moderation yet** — no report flow and no
+  admin removal, so the tab carries a warning to write nothing you would not put on a noticeboard. And the
+  board is **empty until students arrive**, which is the real cost of shipping a community to a site with
+  no users: it is built and correct, and it will look abandoned until it has traffic. The authenticated
+  path (a signed-in student posting, replying, and deleting their own) is covered by policy inspection
+  rather than a live JWT run, because the throwaway test accounts were deliberately removed on 2026-10-14.
+
