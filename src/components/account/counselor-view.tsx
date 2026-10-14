@@ -378,6 +378,44 @@ function CounselorRoster() {
             </section>
 
             <section>
+              <Eyebrow>portfolio</Eyebrow>
+              <ul className="mt-3 space-y-2">
+                {openData.portfolio.length === 0 && (
+                  <li className="text-sm text-dim">
+                    nothing added yet — activities, awards, work and volunteering appear here as the
+                    student fills them in.
+                  </li>
+                )}
+                {openData.portfolio.map((p, i) => (
+                  <li key={i} className="rounded-lg border border-line bg-ink px-3 py-2.5 text-xs">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="rounded border border-lime/30 bg-lime/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime">
+                        {p.kind}
+                      </span>
+                      <span className="font-bold text-paper">{p.title}</span>
+                    </span>
+                    {(p.org || p.years || p.hours) && (
+                      <span className="mt-1 block text-[10px] text-dim">
+                        {[p.org, p.years, p.hours ? `${p.hours} hrs/wk` : null]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    )}
+                    {p.description && (
+                      <span className="mt-1.5 block leading-relaxed text-fog">{p.description}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {openData.portfolio.length > 0 && (
+                <p className="mt-2 text-[10px] leading-relaxed text-dim">
+                  Read-only, like everything on this screen. Entries are the student&rsquo;s own writing —
+                  the same words they will reuse in the application.
+                </p>
+              )}
+            </section>
+
+            <section>
               <Eyebrow>deadlines</Eyebrow>
               <ul className="mt-3 space-y-1.5">
                 {openData.deadlines.length === 0 && (

@@ -1053,3 +1053,31 @@ idempotent, like the rest; it never goes near another app's tables.
   path (a signed-in student posting, replying, and deleting their own) is covered by policy inspection
   rather than a live JWT run, because the throwaway test accounts were deliberately removed on 2026-10-14.
 
+## The counselor's toolkit, and the reviewer gets a door (2026-10-14)
+
+The user asked how a counselor creates a class and manages portfolios, and to make that easier. Both were
+real gaps, not documentation gaps.
+
+- **The counselor could not see a student's portfolio at all.** The data was already synced and simply
+  never rendered. It now appears in the read-only workspace with the entries' own words, and a note that
+  these are the sentences the student will reuse in the application.
+- **A class at a glance.** `classSnapshots()` reads a whole cohort in **six queries rather than six per
+  student** — the existing per-student path is a full workspace read, which is right for one student and
+  absurd for a class of thirty. Opening a class now shows universities, documents as x/10, portfolio and
+  the next deadline with days remaining. The value is the row that reads *3 universities, 4/10 documents,
+  nothing on the calendar* — a student drifting, visible without opening anything.
+- **“Copy invite”** writes the message a counselor actually needs: the link, the code, and what joining
+  means. The code reaches a class chat with its consent sentence attached rather than as a bare string.
+- **`/counselors`** is the guide, written to be *sent*. The four setup steps, the exact invite text, a sample
+  class table, what a counselor can and cannot do, and why the consent works the way it does. Counselors
+  are the adoption channel for a service that is free to students, so it is a landing page rather than a
+  help article.
+- **The checklist moved to `src/data/document-checklist.ts`** so the student and the counselor read the same
+  ten items and “x/10” means the same thing on both screens.
+- **The AI reviewer now requires a signed-in caller.** Free-to-students with the operator paying per review
+  makes an open endpoint someone else's bill — and it *was* open: a plain `curl` with no session returned a
+  full review earlier today. The route now asks Supabase to validate the caller's access token, checked
+  **after** the rate limiter so a flood of bad tokens cannot become a flood of calls to the auth server. It
+  stands aside only when the deployment has no Supabase configured, where there is no identity to check and
+  no way for anyone to sign in.
+

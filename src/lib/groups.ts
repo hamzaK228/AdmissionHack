@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "./supabase";
+import { CHECKLIST } from "@/data/document-checklist";
 
 /**
  * Counselor groups.
@@ -163,3 +164,100 @@ export async function leaveGroup(groupId: string): Promise<GroupResult<true>> {
     .eq("student_id", me);
   return error ? { ok: false, error: error.message } : { ok: true, value: true };
 }
+
+/* ── a whole class at a glance ────────────────────────────────────────────── */
+
+export interface StudentSnapshot {
+  studentId: string;
+  name: string;
+  universities: number;
+  /** checklist items ticked, out of CHECKLIST.length */
+  docsDone: number;
+  docsTotal: number;
+  portfolio: number;
+  deadlines: number;
+  nextDeadline: { title: string; date: string } | null;
+  exams: string[];
+}
+
+/**
+ * Progress for every student in a class, in six queries rather than six per head.
+ *
+ * A counselor with thirty students needs to see who is behind without opening
+ * thirty workspaces — and the existing per-student route (`pullStudentWorkspace`)
+ * is a full workspace read, which is right for one student and absurd for a class.
+ * RLS already lets a counselor read each of these tables for their linked students,
+ * so counting per student is one `.in("user_id", ids)` per table and a fold in
+ * memory.
+ *
+ * A student who has not filled in a name is "unnamed applicant" rather than a blank
+ * row, because a blank row in a class list reads as a bug in the list.
+ */
+export async function classSnapshots(studentIds: string[]): Promise<Map<string, StudentSnapshot>> {
+  const out = new Map<string, StudentSnapshot>();
+  const sb = supabase();
+  if (!sb) return out;
+  const ids = [...new Set(studentIds)];
+  if (ids.length === 0) return out;
+
+  const [profs, unis, checks, port, dls, exams] = await Promise.all([
+    sb.from("ah_profiles").select("id, full_name").in("id", ids),
+    sb.from("ah_university_lists").select("user_id").in("user_id", ids),
+    sb.from("ah_checklist").select("user_id, done").in("user_id", ids),
+    sb.from("ah_portfolio").select("user_id").in("user_id", ids),
+    sb.from("ah_deadlines").select("user_id, title, due_on").in("user_id", ids),
+    sb.from("ah_exam_results").select("user_id, exam_id, overall").in("user_id", ids),
+  ]);
+
+  for (const id of ids) {
+    out.set(id, {
+      studentId: id,
+      name: "unnamed applicant",
+      universities: 0,
+      docsDone: 0,
+      docsTotal: CHECKLIST.length,
+      portfolio: 0,
+      deadlines: 0,
+      nextDeadline: null,
+      exams: [],
+    });
+  }
+
+  for (const p of profs.data ?? []) {
+    const s = out.get(p.id);
+    if (s && p.full_name) s.name = p.full_name;
+  }
+  for (const r of unis.data ?? []) {
+    const s = out.get(r.user_id);
+    if (s) s.universities++;
+  }
+  for (const r of checks.data ?? []) {
+    const s = out.get(r.user_id);
+    if (s && r.done) s.docsDone++;
+  }
+  for (const r of port.data ?? []) {
+    const s = out.get(r.user_id);
+    if (s) s.portfolio++;
+  }
+  for (const r of exams.data ?? []) {
+    const s = out.get(r.user_id);
+    if (s) s.exams.push(`${r.exam_id.toUpperCase()}${r.overall ? ` ${r.overall}` : ""}`);
+  }
+
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  for (const r of dls.data ?? []) {
+    const s = out.get(r.user_id);
+    if (!s) continue;
+    s.deadlines++;
+    if (r.due_on >= todayISO && (!s.nextDeadline || r.due_on < s.nextDeadline.date)) {
+      s.nextDeadline = { title: r.title, date: r.due_on };
+    }
+  }
+
+  return out;
+}
+
+/** Days until an ISO date, negative when it has passed. */
+export const daysUntil = (iso: string, now: Date = new Date()): number =>
+  Math.ceil((+new Date(iso + "T00:00:00") - +now) / 86_400_000);

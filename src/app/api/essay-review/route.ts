@@ -31,6 +31,39 @@ const MODEL = process.env.AI_MODEL ?? "deepseek-chat";
 const MIN_CHARS = 200;
 const MAX_CHARS = 18_000;
 
+/**
+ * Who is allowed to spend the owner's credit.
+ *
+ * The service is free to students and the operator pays per review, which makes an
+ * open endpoint someone else's bill. A public route was fine while it was only ever
+ * tested by hand; it is not fine now. So the route asks Supabase to validate the
+ * caller's access token — the same session the rest of the app already has — and
+ * refuses anyone without one.
+ *
+ * If this deployment has no Supabase configured there is no identity to check
+ * against and no way for a student to sign in, so the gate stands aside rather than
+ * locking the feature out of a local checkout.
+ */
+async function signedIn(req: Request): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anon) return true;
+
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) return false;
+
+  try {
+    const res = await fetch(`${url}/auth/v1/user`, {
+      headers: { apikey: anon, Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 const KIND_LABEL: Record<string, string> = {
   personal: "a personal statement (undergraduate, Common App style)",
   sop: "a statement of purpose (graduate)",
@@ -89,9 +122,13 @@ function rateLimited(ip: string): boolean {
 const clientIp = (req: Request) =>
   req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
 
-/** Does this deployment have a key? The UI asks so it can be honest about it. */
+/** Does this deployment have a key, and does it expect a signed-in caller? */
 export async function GET() {
-  return NextResponse.json({ configured: Boolean(process.env.AI_API_KEY), model: MODEL });
+  return NextResponse.json({
+    configured: Boolean(process.env.AI_API_KEY),
+    model: MODEL,
+    requiresSignIn: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  });
 }
 
 interface Body {
@@ -110,6 +147,12 @@ export async function POST(req: Request) {
 
   if (rateLimited(clientIp(req))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
+  // checked after the limiter, so a flood of bad tokens cannot turn into a flood of
+  // calls to the auth server
+  if (!(await signedIn(req))) {
+    return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
   }
 
   let body: Body;

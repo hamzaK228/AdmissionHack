@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/components/dashboard/store";
+import { useAuth } from "@/lib/use-auth";
+import { supabase } from "@/lib/supabase";
 import { Eyebrow } from "@/components/ui";
 import type { Review } from "@/app/api/essay-review/route";
 
@@ -42,6 +44,8 @@ const SEVERITY: Record<Review["issues"][number]["severity"], string> = {
 const ERRORS: Record<string, string> = {
   not_configured: "The reviewer is not switched on for this deployment — no model key is configured.",
   rate_limited: "That is a lot of reviews in a short time. Wait a few minutes and try again.",
+  sign_in_required:
+    "Reviews cost money to run, so they are limited to accounts. Sign in on the account tab — the primer and the Writing School work without one.",
   too_short: "The draft is too short to review — paste at least a couple of paragraphs.",
   too_long: "The draft is longer than this reviewer accepts. Trim it, or review it in sections.",
   timeout: "The model took too long to answer. Try again, or review a shorter section.",
@@ -58,11 +62,13 @@ const ERRORS: Record<string, string> = {
 
 export function WritingCoach() {
   const { profile } = useStore();
+  const { user } = useAuth();
   const [draft, setDraft] = useState("");
   const [kind, setKind] = useState<Kind>("personal");
   const [target, setTarget] = useState("");
   const [wordLimit, setWordLimit] = useState("");
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [requiresSignIn, setRequiresSignIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,8 +95,9 @@ export function WritingCoach() {
   useEffect(() => {
     fetch("/api/essay-review")
       .then((r) => r.json())
-      .then((d: { configured?: boolean; model?: string }) => {
+      .then((d: { configured?: boolean; model?: string; requiresSignIn?: boolean }) => {
         setConfigured(Boolean(d.configured));
+        setRequiresSignIn(Boolean(d.requiresSignIn));
         if (d.model) setModel(d.model);
       })
       .catch(() => setConfigured(false));
@@ -103,9 +110,15 @@ export function WritingCoach() {
     setError(null);
     setReview(null);
     try {
+      // the route verifies this token; without it a free public reviewer is an open tab
+      const sb = supabase();
+      const session = sb ? (await sb.auth.getSession()).data.session : null;
       const res = await fetch("/api/essay-review", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           essay: draft,
           kind,
@@ -263,6 +276,11 @@ export function WritingCoach() {
               )}
               {configured === false && (
                 <span className="text-xs text-amber">reviewer not configured on this deployment</span>
+              )}
+              {configured !== false && requiresSignIn && !user && (
+                <span className="text-xs text-amber">
+                  sign in on the account tab — reviews cost money to run
+                </span>
               )}
             </div>
 

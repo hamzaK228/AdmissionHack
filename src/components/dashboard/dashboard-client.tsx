@@ -22,20 +22,9 @@ import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
 import { DocumentFolders } from "@/components/dashboard/document-folders";
 import { countries } from "@/data/countries";
+// the checklist lives in data now: the counselor reads the same list
+import { CHECKLIST as DOCS } from "@/data/document-checklist";
 import { Eyebrow } from "@/components/ui";
-
-const DOCS = [
-  { id: "passport", label: "Passport (valid 6+ months beyond enrollment)" },
-  { id: "transcripts", label: "Official school transcripts (sealed)" },
-  { id: "diploma", label: "Diploma / completion certificate" },
-  { id: "translations", label: "Sworn/notarized translations" },
-  { id: "english", label: "English test certificate (IELTS/TOEFL/DET)" },
-  { id: "lor", label: "Recommendation letters ×2–3 (requested early!)" },
-  { id: "sop", label: "Personal statement / motivation letter draft" },
-  { id: "cv", label: "CV (academic format)" },
-  { id: "financial", label: "Financial proof documents (bank/GIC/blocked account)" },
-  { id: "aps", label: "APS / equivalency certificate (DE·CN·IN·AE if applicable)" },
-];
 
 const DEMO_DEADLINES = [
   { title: "IELTS exam date", date: "2027-01-16" },
