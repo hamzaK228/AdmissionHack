@@ -145,9 +145,10 @@ export default function PrivacyPage() {
             <strong className="text-paper">Vercel</strong> — serves the website.
           </LI>
           <LI>
-            <strong className="text-paper">DeepSeek</strong> — the essay reviewer. When a signed-in student
-            submits a draft, that text is sent to DeepSeek&rsquo;s API to produce feedback. Nothing is sent
-            unless you press the button, and it is sent for that one request. See section 6.
+            <strong className="text-paper">DeepSeek</strong> — the AI features. When a signed-in student
+            submits an essay draft for review, or asks the advisor what to do next, the relevant text is sent
+            to DeepSeek&rsquo;s API for that request. Nothing is sent unless you press the button. See
+            section 6.
           </LI>
         </UL>
         <P>
@@ -155,11 +156,16 @@ export default function PrivacyPage() {
           data brokers, and we do not use it to train anything of our own.
         </P>
 
-        <H>6. The AI essay reviewer — read this before pasting</H>
+        <H>6. The AI features — read this before using them</H>
         <P>
-          The reviewer sends the text you submit to a third-party model provider (currently DeepSeek) so that
-          it can return comments. Two things follow, and we would rather you knew them than found out:
+          Two features send text to a third-party model provider (currently DeepSeek). The{" "}
+          <strong className="text-paper">essay reviewer</strong> sends the draft you submit. The{" "}
+          <strong className="text-paper">advisor</strong> sends a summary of your workspace so that it can
+          tell you what to do next — your profile (level, destination, intake, budget, grades), your recorded
+          scores, your university list with each application&rsquo;s status, how many of your documents are
+          ticked and which are missing, your tracked deadlines, and how many portfolio entries you have.
         </P>
+        <P>Three things follow, and we would rather you knew them than found out:</P>
         <UL>
           <LI>
             Your draft leaves our systems and is processed by that provider under{" "}
@@ -167,13 +173,18 @@ export default function PrivacyPage() {
             anything you would not be willing to hand to a third party — yours, or anyone else&rsquo;s.
           </LI>
           <LI>
-            Reviews are limited to signed-in accounts. That is a cost measure, not a privacy one, but it also
-            means an anonymous visitor cannot use the feature to process text at all.
+            The advisor sends a summary of your workspace, not your uploaded files. Your passport, your
+            transcripts and your letters are not sent to it.
+          </LI>
+          <LI>
+            Both features are limited to signed-in accounts. That is a cost measure rather than a privacy one,
+            but it also means an anonymous visitor cannot use them to process anything at all.
           </LI>
         </UL>
         <P>
-          If you would rather not use a third-party model, do not use the writing tab — the guide, the
-          annotated examples and the rest of the workspace work without it.
+          If you would rather not use a third-party model, do not use the writing tab or the advisor — the
+          guide, the annotated examples, the timeline, the requirement checker and the rest of the workspace
+          work without them.
         </P>
 
         <H>7. Cookies, tracking and local storage</H>
