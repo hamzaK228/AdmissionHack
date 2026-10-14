@@ -833,12 +833,44 @@ Completing the student journey end-to-end: the moment offers arrive, the questio
 **Build verification:** `npm run build` passes (1,554 pages), `npx tsc --noEmit` clean.
 
 **Still waiting on you:**
-1. Paste `supabase/migrations/0003_application_tracker.sql` into the sathack project SQL editor
-   (same as the ecosystem migration), then regenerate `src/lib/database.types.ts`.
-2. Add `https://admissionhack-seven.vercel.app` to **Redirect URLs** in the sathack project
+1. Add `https://admissionhack-seven.vercel.app` to **Redirect URLs** in the sathack project
    (Authentication → URL Configuration).
-3. Delete the throwaway test accounts (`student@example.com`, `counselor@example.com`).
-4. Decide: email provider (Resend/SendGrid/AWS SES) for deadline reminders, and whether you have
-   an OpenAI/Anthropic key for the AI essay reviewer / AI advisor.
-5. Custom domain and license file — repo is public with all rights reserved by default.
+2. Delete the throwaway test accounts (`student@example.com`, `counselor@example.com`).
+3. Decide: email provider (Resend/SendGrid/AWS SES) for deadline reminders, and whether you have
+   an OpenAI/Anthropic key for the AI essay reviewer / AI advisor — three features are blocked on
+   those two choices alone.
+4. Custom domain and license file — repo is public with all rights reserved by default.
+
+## TOEFL Reading bank (2026-10-14)
+
+Pillar 3's third exam, and the blueprint's claim proven again: one content file
+(`src/data/practice/toefl.ts`) plus one registry line, and the exams hub, the exam page and the
+practice route all picked it up with no other change — `hasPractice()` is what they read.
+
+- Twelve original questions on two academic passages (horse domestication, and memory
+  consolidation during sleep). Deliberately a different question mix from IELTS: vocabulary in
+  context, EXCEPT ("all of the following are true except"), rhetorical purpose, inference and
+  sentence simplification — none of which the SAT or IELTS sets use, so the bank exercises the
+  engine rather than repeating it.
+- Validated mechanically before shipping: 12 unique ids, every `answer` present among its choices,
+  four choices each with no duplicate ids, a passage on every question, and an explanation long
+  enough to teach. `npx tsc --noEmit` clean; the build emits `/exams/toefl` and
+  `/exams/toefl/practice` (1,555 pages).
+- DET (Duolingo) is the one remaining language-hub gap, and it is the same one-file job.
+
+## Types regenerated against the live project (2026-10-14)
+
+`src/lib/database.types.ts` no longer describes the retired project.
+
+- The `ah_*` tables were checked against `generate_typescript_types` on the **live** sathack
+  project (`arpwvfphzryaaxrvegju`) and match — including the tracker columns `status`,
+  `submitted_on` and `decided_on`. Those columns are present in the live database, so **nothing
+  needs pasting for the tracker** (whether they came from `0003_application_tracker.sql` or the
+  ecosystem migration, the effect is the same).
+- Two stale things were corrected: the header named `nkqjlccomtcqwsawbndp` (the old project, no
+  longer reachable from this account), and `__InternalSupabase.PostgrestVersion` said `14.18`
+  where the live project reports `14.17` — the file's own contract is that this value must match
+  the live project.
+- The generator also returns ~40 SAThack tables that share this database; only the `ah_*` tables
+  are kept, and the header now says why.
 

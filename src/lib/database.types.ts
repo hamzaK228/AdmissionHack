@@ -2,17 +2,21 @@
  * Database types for AdmissionHack.
  *
  * GENERATED — do not hand-edit the `Database` type below. It comes from the live
- * project (`generate_typescript_types` against nkqjlccomtcqwsawbndp, which is
- * where supabase/migrations/0001_admissionhack_schema.sql has been applied).
- * Regenerate the same way whenever the migration changes; drift between the two
- * then becomes a compile error instead of a runtime one.
+ * project (`generate_typescript_types` against arpwvfphzryaaxrvegju, the shared
+ * ecosystem project where the `ah_*` schema has been applied — see
+ * supabase/ecosystem-migration.sql and 0003_application_tracker.sql). Regenerate
+ * the same way whenever the migration changes; drift between the two then becomes
+ * a compile error instead of a runtime one.
  *
- * Two deliberate differences from the raw generator output:
+ * Deliberate differences from the raw generator output:
  *   * the `Tables` / `TablesInsert` / `TablesUpdate` / `Enums` /
  *     `CompositeTypes` helper types and `Constants` are omitted. supabase-js
  *     consumes only the `Database` type; the helpers exist for app code, and
  *     this app addresses tables through the `T` map in ./supabase. Keep them if
  *     you start using them.
+ *   * only the `ah_*` tables are kept. This database is shared with SAThack, so
+ *     the generator also returns ~40 tables this app never touches; carrying
+ *     them here would suggest otherwise.
  *   * the aliases at the bottom are appended by hand, so the rest of the code
  *     reads `AhRole` rather than `Database["public"]["Enums"]["ah_role"]`.
  *     Re-append them after regenerating.
@@ -25,7 +29,7 @@ export type Database = {
   // second type argument. This value must match the live project — a wrong one
   // silently collapses every query type to `never`.
   __InternalSupabase: {
-    PostgrestVersion: "14.18";
+    PostgrestVersion: "14.17";
   };
   public: {
     Tables: {
