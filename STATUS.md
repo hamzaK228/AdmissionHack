@@ -1202,3 +1202,21 @@ the order of work.
 - Also verified: **both sites are up** (SAThack and AdmissionHack both 200), and SAThack's data was untouched
   by this session's four migrations — 5,040 questions, 114 profiles, 6,817 attempts, all intact.
 
+## The CV builder, and the finish plan (2026-10-14)
+
+- **`docs/finish-plan.md`** — everything left, in the order it has to happen, with **who** does each step and
+  why it sits where it does. The dependency chain is the point: four steps gate advertising (walk the signup
+  path, configure SMTP, fill the legal placeholders, decide how ads are measured), and the rest can go in any
+  order.
+- **`/cv`** — the CV builder, and the last named gap in the Apply pillar. Half a CV already existed in the
+  workspace: the scores on the exams tab, and the activities, awards and work on the portfolio tab. So the
+  page asks only for what is genuinely missing — contact details, education, skills — and assembles the rest
+  from the student's own words rather than asking them to write it twice.
+- **It renders as a sheet of paper** — white background, sans-serif — rather than a dashboard panel. A CV is
+  the one screen in this product that is meant to leave the screen, and drawing it as paper means printing
+  needs no colour overrides: what you see is what comes out of the printer. The site header and footer gained
+  `print:hidden` for the same reason, so printing any page no longer carries the navigation.
+- **Known limit, stated on the page rather than implied:** the CV details are **browser-local**, unlike the
+  profile and portfolio, which sync when signed in. Syncing them is a small follow-up (one `jsonb` column).
+- `/cv` is in the robots disallow list, since it is a personal tool that renders empty for a stranger.
+
