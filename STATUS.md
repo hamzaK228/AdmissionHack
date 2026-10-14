@@ -1244,3 +1244,35 @@ rather than guessed at.
   campaign, but it did not cause this failure, and `docs/launch.md` now says so rather than leaving a wrong
   diagnosis standing.
 
+## The advisor — the last unbuilt pillar (2026-10-14)
+
+Pillar 8, and the one thing the dashboard genuinely could not do: **synthesise.**
+
+- Everything needed to answer *"what should I do this week?"* was already in the workspace — the list and
+  its statuses, the checklist, the deadlines, and the app's own assessments from the timeline and the
+  requirement checker — and nothing read them together. `POST /api/advisor` does, and returns a read, an
+  ordered set of priorities (each with a reason and a deadline), the risks of leaving things, and one first
+  step.
+- **It is grounded, and that is the whole point.** Verified against the live provider with a realistic
+  mid-process student. It found the live emergency — a target university's upload window closing in 12 days
+  with six documents missing — ordered the work by **lead time** (referee letters first, because they depend
+  on other people), named the slow items that cannot be rushed (APS, translations), and spotted that the
+  scheduled IELTS retake was probably unnecessary given the 7.0 already recorded. That is advice derived
+  from the student's own rows, not generic encouragement.
+- **It sits on the overview tab**, where a student lands — the answer is an overview-level synthesis, so
+  that is where the question belongs.
+- **The plumbing is shared now.** `src/lib/ai.ts` holds the key handling, the sign-in gate, the rate limiter,
+  the error classification and the loose JSON parsing. The reviewer lost ~25 lines of duplication and gained
+  nothing new. Two routes now call a model, and a second copy of an authorisation check is how a hole opens.
+  `src/lib/ai-errors.ts` holds one map of failure messages, so both surfaces say the same actionable thing.
+- **A bug found by running the code instead of assuming:** `??` does **not** fall back on an *empty* string,
+  and `.env.local` ships `AI_MODEL=` and `AI_API_BASE_URL=` empty — so both resolved to `""`, and every local
+  call failed with an unhelpful `network` error. Fixed with `||` in `ai.ts`, and the same latent bug fixed in
+  `robots.ts` and `sitemap.ts`, where an empty `NEXT_PUBLIC_SITE_URL` would have produced a sitemap of
+  relative URLs.
+- Gated and rate-limited (6 per 10 minutes), and **disclosed**: the Privacy Policy's AI section now covers
+  the advisor and names what is *not* sent — uploaded files never go to the model.
+- Verified live: `GET /api/advisor` reports `configured: true`, and an anonymous `POST` returns `401
+  sign_in_required` — as does the reviewer after the refactor, which is what proves the shared gate still
+  works.
+
