@@ -4,13 +4,16 @@ import { NextResponse } from "next/server";
  * AI essay review — the one place in this app that talks to a model.
  *
  * Server-side on purpose: the API key is a secret, so it is read from
- * `GLM_API_KEY` (no `NEXT_PUBLIC_` prefix) and never reaches the browser. The
+ * `AI_API_KEY` (no `NEXT_PUBLIC_` prefix) and never reaches the browser. The
  * endpoint is optional exactly like the Supabase client is — unset the key and
  * `GET` reports `configured: false` so the UI can say so honestly instead of
  * showing a form that fails.
  *
- * The provider is Zhipu's GLM (OpenAI-compatible chat completions). `GLM_MODEL`
- * and `GLM_API_BASE_URL` exist so the model can be changed without a code change.
+ * The vendor is configuration, not code: any OpenAI-compatible chat-completions
+ * endpoint works. The default is DeepSeek (`deepseek-chat`); `AI_API_BASE_URL`
+ * and `AI_MODEL` switch it to Zhipu GLM, OpenAI, or anything else with the same
+ * shape, with no code change. That is deliberate — the provider has already
+ * changed once, and it should not cost a code edit again.
  *
  * Two things this deliberately does NOT do: store the essay (it is forwarded to
  * the provider and dropped) and promise an outcome. It is a reader's opinion,
@@ -22,8 +25,8 @@ export const dynamic = "force-dynamic";
 /** A model call is slow; Vercel's default would cut it off. */
 export const maxDuration = 60;
 
-const BASE = process.env.GLM_API_BASE_URL ?? "https://open.bigmodel.cn/api/paas/v4";
-const MODEL = process.env.GLM_MODEL ?? "glm-4.6";
+const BASE = process.env.AI_API_BASE_URL ?? "https://api.deepseek.com";
+const MODEL = process.env.AI_MODEL ?? "deepseek-chat";
 
 const MIN_CHARS = 200;
 const MAX_CHARS = 18_000;
@@ -88,7 +91,7 @@ const clientIp = (req: Request) =>
 
 /** Does this deployment have a key? The UI asks so it can be honest about it. */
 export async function GET() {
-  return NextResponse.json({ configured: Boolean(process.env.GLM_API_KEY), model: MODEL });
+  return NextResponse.json({ configured: Boolean(process.env.AI_API_KEY), model: MODEL });
 }
 
 interface Body {
@@ -100,7 +103,7 @@ interface Body {
 }
 
 export async function POST(req: Request) {
-  const key = process.env.GLM_API_KEY;
+  const key = process.env.AI_API_KEY;
   if (!key) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
   }
@@ -153,17 +156,21 @@ export async function POST(req: Request) {
       const detail = await upstream.text().catch(() => "");
       console.error("[essay-review] upstream", upstream.status, detail.slice(0, 400));
       /**
-       * Zhipu reports an account with no credit as `429` + code `1113`, not as
-       * `402` — so a balance problem would otherwise look like a rate limit and
-       * send whoever runs the deployment chasing the wrong thing. The distinc-
-       * tions below are worth the branch: each maps to different advice.
+       * Providers disagree about how to say "this account has no money", and the
+       * wrong code sends whoever runs the deployment chasing the wrong thing:
+       * DeepSeek uses `402`, while Zhipu uses `429` + code `1113`, which would
+       * otherwise pattern-match to a rate limit. Both map to `upstream_quota`;
+       * a plain `429` stays `upstream_busy`, because "top up" and "wait a
+       * minute" are different advice.
        */
       const code =
         upstream.status === 401 || upstream.status === 403
           ? "upstream_auth"
-          : /1211|模型不存在/.test(detail)
+          : /1211|模型不存在|model not found/i.test(detail)
             ? "upstream_model"
-            : upstream.status === 429 && /1113|余额|balance|quota|credit/i.test(detail)
+            : upstream.status === 402 ||
+                (upstream.status === 429 &&
+                  /1113|余额|balance|quota|credit|insufficient/i.test(detail))
               ? "upstream_quota"
               : upstream.status === 429
                 ? "upstream_busy"
