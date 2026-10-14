@@ -1142,3 +1142,38 @@ Two asks: finish the board, then build something playful.
   family financial documents for people who may be minors**, which needs a named age policy and, when a
   school uses it with a class, a data processing agreement.
 
+## The documentation set, and the IP position (2026-10-14)
+
+The owner asked for their own input to be captured, for full documentation, and for the legal side to be
+sorted "for the future". Four documents, written to be used rather than admired:
+
+- **`docs/owner-input.md`** — every blank only the owner can fill: the six facts about them (entity, address,
+  contact, jurisdiction, venue, liability cap) with suggested wording, the judgements that must be theirs
+  (the no-tracking promise, the age policy, retention, the AI stance), and the four places where the
+  product's *voice* should be theirs rather than mine.
+- **`docs/ip-and-licensing.md`** — the honest IP position, below.
+- **`docs/architecture.md`** — the reference `STATUS.md` never was: the 14 tables, the consent model as one
+  database function, why products can share a database, the AI layer, how to add content, and operations with
+  the failure mode each command causes.
+- **`docs/README.md`** — an index, with the unwritten documents named rather than implied.
+
+**The finding that mattered most.** The repository has been **public since 2026-10-09 with no licence file**,
+which means the code is already disclosed. Under absolute-novelty rules — the EPO, China, Japan and most of
+the world — that closes the patent door for anything visible in it. **The United States is the exception: a
+12-month grace period from the inventor's own disclosure, which closes around 9 October 2027.** So the honest
+answer to "patents for the future" is that the window is not in the future; it is open now and it is closing.
+
+**And the rest of that assessment, which is less flattering but more useful:** patents are probably the wrong
+instrument here, because patentability of software turns on a technical invention beyond a way of doing
+business, and a single grant costs five figures per jurisdiction against a product that charges nothing. The
+assets that actually exist are **copyright** (automatic, and most valuable on the written content — the
+guides, the Writing School's annotated essays, the 60 original practice questions) and the **trademark** on
+the name, which is cheaper and more enforceable. The licence is a decision the owner should be holding on
+purpose: with no file, the default is all rights reserved — legitimate, and worth knowing.
+
+**The likelier risk is not patents at all.** The directory republishes **QS and ARWU ranking positions**,
+both proprietary datasets whose terms restrict redistribution; the footer credits them and links to the
+official pages, which is good practice but **not a licence**. A takedown or licence demand over numbers on
+1,500 pages is more probable than any patent dispute — and the fix costs the product little, because a
+choosing student decides on country, cost and fit, not on a rank chip.
+
