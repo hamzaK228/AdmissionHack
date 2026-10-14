@@ -1,4 +1,17 @@
 -- ══════════════════════════════════════════════════════════════════════════
+-- ⚠️  SUPERSEDED AS A ONE-SHOT — do not provision a new database from this file
+--     alone. It creates the schema as it stood at 0001+0002 and does NOT include
+--     the later additions: the college-list tracker columns (0003), the community
+--     board (0004) and board moderation (0005). A fresh database built from this
+--     file would be missing ah_posts, ah_comments and ah_post_reports.
+--
+--     To build a database that matches production, run supabase/migrations/0001
+--     → 0005 in order, or restore a pg_dump. See docs/database-migration.md.
+--
+--     It stays in the repository because this is the file that was actually
+--     pasted into the shared project, so it is the historical record of how the
+--     schema arrived there.
+-- ══════════════════════════════════════════════════════════════════════════
 -- AdmissionHack → the SAThack project: ONE account pool for both products.
 --
 -- Paste this whole file into the SQL editor of the **sathack** project
