@@ -13,6 +13,7 @@ import { AuthPanel } from "@/components/account/auth-panel";
 import { CounselorView } from "@/components/account/counselor-view";
 import { OfferComparison } from "@/components/dashboard/offer-comparison";
 import { WritingCoach } from "@/components/dashboard/writing-coach";
+import { RequirementChecker } from "@/components/dashboard/requirement-checker";
 import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
@@ -545,6 +546,7 @@ const TABS = [
   { id: "roadmap", label: "timeline ⏱" },
   { id: "offers", label: "decisions 🎓" },
   { id: "documents", label: "documents" },
+  { id: "requirements", label: "requirements ✓" },
   { id: "exams", label: "exams" },
   { id: "portfolio", label: "portfolio" },
   { id: "writing", label: "writing ✍" },
@@ -764,6 +766,9 @@ export function DashboardClient({
               </ul>
             </aside>
           </div>
+        )}
+        {tab === "requirements" && (
+          <RequirementChecker uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />
         )}
         {tab === "exams" && <ExamsTab ieltsMinimums={ieltsMinimums} />}
         {tab === "portfolio" && <PortfolioTab />}

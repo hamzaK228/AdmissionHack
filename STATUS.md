@@ -959,3 +959,24 @@ in the abstract.
   omission as the earlier 85-vs-1,543 bug, a public content hub invisible to crawlers. Added, along
   with `/writing`.
 
+## The requirement checker — Phase 3's other half (2026-10-14)
+
+- `src/lib/requirements.ts` and a **requirements ✓** dashboard tab. The document checklist answers
+  "what does *every* applicant need"; this answers "what does *this* application need" — a different
+  list in every country, and the one that costs a season when it surfaces late.
+- **Nothing invented.** The per-country facts are read straight from the country guides — the platform
+  you apply through, the application window, the fee, the visa financial proof, the processing time,
+  post-graduation work rights — and displayed verbatim, so a figure stays attached to its source rather
+  than to a paraphrase of it. Each card also carries that guide's own "mistakes people make here".
+- **The country-specific item a generic checklist cannot know about:** Germany, China, India and the
+  UAE commonly want an APS / equivalency certificate, so that requirement appears only for those
+  countries. A master's application gains a CV item; a bachelor's does not.
+- **Readiness is derived, never assumed.** Every line names which of the student's own data it was read
+  from — a checklist tick, or the scores on the exams tab; a recorded IELTS/TOEFL satisfies the English
+  requirement even with no tick. Anything unobservable (whether an application account exists) is listed
+  as context and excluded from the score rather than guessed at.
+- Countries are ordered least-ready-first, so the one you are behind in is the first card.
+- 15 assertions over the pure module (per-country APS, level-dependent CV, exam-satisfies-English,
+  unguided-country fallback, unknown-slug safety, sort order) run directly under Node's type stripping
+  — no test dependency added. `tsc` and a 1,557-page build pass.
+
