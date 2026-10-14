@@ -8,6 +8,7 @@ const columns = [
       { href: "/universities", label: "universities/" },
       { href: "/exams", label: "exams/" },
       { href: "/writing", label: "writing/" },
+      { href: "/play", label: "arcade/" },
       { href: "/scholarships", label: "scholarships/" },
       { href: "/counselors", label: "for-counselors/" },
       { href: "/arrival", label: "arrival/" },

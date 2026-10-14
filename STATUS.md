@@ -1081,3 +1081,39 @@ real gaps, not documentation gaps.
   stands aside only when the deployment has no Supabase configured, where there is no identity to check and
   no way for anyone to sign in.
 
+## Moderation, and an arcade (2026-10-14)
+
+Two asks: finish the board, then build something playful.
+
+### Finishing the board — moderation (`0005_board_moderation.sql`)
+
+- Students can now **report** a post or a reply. Deliberately quiet: no counts, no public record, and it
+  lands with the operator rather than with a group, so nothing disappears because two people disliked it.
+- **Hiding is the operator's job, not a role in the app.** A global board needs a global moderator, and
+  inventing an admin role for one action would be a larger surface than the problem. Reports are collected;
+  the operator reads them in the Supabase dashboard and hides a row with one statement.
+- **The subtlety that would have made the whole thing useless:** `0004`'s author-UPDATE policy meant an
+  author whose post the operator hid could have set `is_hidden` straight back to false — they were allowed
+  to update their own row. That policy existed for a post-editing feature that was never built, so it is
+  **dropped**, and authors keep only INSERT and DELETE. Verified after applying: **0 UPDATE policies**
+  remain on either board table.
+- Reads exclude hidden rows **except for the author**, who still sees their own post — otherwise hiding
+  looks like a bug to the person who wrote it.
+- Proven before shipping: 2 `is_hidden` columns, the reports table with 2 policies, 6 board policies, and
+  the constraint that a report names exactly one target.
+
+### The arcade — `/play`
+
+- **Two games from one deck of 48 real universities.** *Higher or lower* asks which of two costs more per
+  year and keeps the winner on, so a streak measures knowledge rather than a lucky first pair. *Guess the
+  university* gives three clues and four options, scores 3/2/1 by how few clues you needed, and ends the
+  run when the clues run out — with the first distractor chosen from the same country on purpose, so clue
+  one cannot carry the answer.
+- **No account, no backend, and no score server.** Both games run entirely in the browser; the only thing
+  the page ships is a small array, and the personal best lives in localStorage. Given that the service is
+  free and the operator pays for anything that costs money, a game that costs nothing to run was the point.
+- **The deck is 48 because only the curated entries carry tuition** — the game is limited to numbers that
+  exist rather than inventing plausible ones, and a guessing game built on invented tuition would teach the
+  wrong thing faster than it entertained. Growing the deck is data entry, not code.
+- Linked from the header and the footer, and in the sitemap. `tsc` clean, 1,560-page build.
+

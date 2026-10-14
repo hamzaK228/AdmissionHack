@@ -48,6 +48,7 @@ export const T = {
   links: "ah_counselor_links",
   posts: "ah_posts",
   comments: "ah_comments",
+  boardReports: "ah_post_reports",
 } as const;
 
 /** Storage buckets, also namespaced. Paths are `{bucket}/{user_id}/{file}`. */

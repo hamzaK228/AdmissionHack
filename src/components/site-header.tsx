@@ -10,6 +10,7 @@ const nav = [
   { href: "/universities", label: "universities" },
   { href: "/exams", label: "exams" },
   { href: "/writing", label: "writing" },
+  { href: "/play", label: "arcade" },
   { href: "/scholarships", label: "scholarships" },
   { href: "/countries", label: "countries" },
 ];

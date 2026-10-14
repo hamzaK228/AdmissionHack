@@ -369,6 +369,57 @@ export type Database = {
           },
         ];
       };
+      /* Moderation (migration 0005): a student files a report as themselves, and
+         reads back only their own. Hiding is the operator's job via the dashboard. */
+      ah_post_reports: {
+        Row: {
+          comment_id: string | null;
+          created_at: string;
+          id: string;
+          post_id: string | null;
+          reason: string;
+          reporter_id: string;
+        };
+        Insert: {
+          comment_id?: string | null;
+          created_at?: string;
+          id?: string;
+          post_id?: string | null;
+          reason: string;
+          reporter_id: string;
+        };
+        Update: {
+          comment_id?: string | null;
+          created_at?: string;
+          id?: string;
+          post_id?: string | null;
+          reason?: string;
+          reporter_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_post_reports_comment_id_fkey";
+            columns: ["comment_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_comments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ah_post_reports_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ah_post_reports_reporter_id_fkey";
+            columns: ["reporter_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ah_posts: {
         Row: {
           author_id: string;

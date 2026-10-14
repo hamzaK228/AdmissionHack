@@ -148,6 +148,34 @@ export async function deleteComment(id: string): Promise<WriteResult> {
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+/**
+ * Report a post or a comment.
+ *
+ * There is no admin screen: reports are collected and the operator reads them in
+ * the Supabase dashboard, where hiding is one statement. Building a role in the app
+ * for a single action would be a bigger surface than the problem it solves, and
+ * the board is small enough that a human reading reports is the honest design.
+ *
+ * The reporter is taken from the session rather than from the caller's argument —
+ * the policy enforces it anyway, but passing it in would suggest it were the
+ * client's choice.
+ */
+export async function reportTarget(
+  target: { postId: string } | { commentId: string },
+  reason: string,
+): Promise<WriteResult> {
+  const sb = supabase();
+  if (!sb) return { ok: false, error: "not configured" };
+  const { data } = await sb.auth.getUser();
+  if (!data.user) return { ok: false, error: "not signed in" };
+  const { error } = await sb.from(T.boardReports).insert({
+    reporter_id: data.user.id,
+    ...("postId" in target ? { post_id: target.postId } : { comment_id: target.commentId }),
+    reason: reason.trim(),
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 /** "3 minutes ago" — enough for a board, and cheaper than a date library. */
 export function since(iso: string, now: Date = new Date()): string {
   const s = Math.max(1, Math.round((+now - +new Date(iso)) / 1000));

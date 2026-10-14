@@ -27,6 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/scholarships`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/arrival`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/counselors`, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/play`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/countries`, changeFrequency: "monthly", priority: 0.8 },
     ...journeySteps.map((s) => ({
       url: `${base}/how-admission-works/${s.slug}`,

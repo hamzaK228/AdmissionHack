@@ -9,6 +9,7 @@ import {
   createComment,
   deletePost,
   deleteComment,
+  reportTarget,
   since,
   TOPICS,
   TOPIC_LABEL,
@@ -128,6 +129,71 @@ function Composer({ onPosted }: { onPosted: () => void }) {
   );
 }
 
+/**
+ * Report a post or reply.
+ *
+ * Deliberately small and quiet: a report is not a vote and not a public act, so it
+ * does not show a count, does not tell the author, and lands with the operator
+ * rather than with a group. Nobody's post disappears because two people disliked it.
+ */
+function ReportControl({ target }: { target: { postId: string } | { commentId: string } }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  if (done) return <span className="text-[11px] text-mint">reported ✓</span>;
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[11px] font-bold text-dim transition-colors hover:text-amber"
+      >
+        report
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="flex items-center gap-1.5"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (reason.trim().length < 3) return;
+        setBusy(true);
+        const res = await reportTarget(target, reason);
+        setBusy(false);
+        if (res.ok) setDone(true);
+      }}
+    >
+      <input
+        autoFocus
+        className="w-44 rounded border border-line bg-ink px-2 py-1 text-[11px] text-paper outline-none focus:border-amber/60"
+        placeholder="what is wrong with it?"
+        value={reason}
+        maxLength={500}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <button
+        type="submit"
+        disabled={busy || reason.trim().length < 3}
+        className="rounded border border-line px-2 py-1 text-[10px] font-bold text-amber disabled:opacity-30"
+      >
+        send
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-[10px] text-dim transition-colors hover:text-fog"
+      >
+        cancel
+      </button>
+    </form>
+  );
+}
+
 function ReplyBox({ postId, onReplied }: { postId: string; onReplied: () => void }) {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -179,18 +245,22 @@ function PostCard({ post, onChanged }: { post: BoardPost; onChanged: () => void 
         <span className="rounded border border-line2 px-1.5 py-0.5 uppercase tracking-wider">
           {TOPIC_LABEL[post.topic]}
         </span>
-        {post.mine && (
-          <button
-            type="button"
-            onClick={async () => {
-              await deletePost(post.id);
-              onChanged();
-            }}
-            className="ml-auto text-[11px] font-bold text-dim transition-colors hover:text-red"
-          >
-            delete
-          </button>
-        )}
+        <span className="ml-auto">
+          {post.mine ? (
+            <button
+              type="button"
+              onClick={async () => {
+                await deletePost(post.id);
+                onChanged();
+              }}
+              className="text-[11px] font-bold text-dim transition-colors hover:text-red"
+            >
+              delete
+            </button>
+          ) : (
+            <ReportControl target={{ postId: post.id }} />
+          )}
+        </span>
       </div>
 
       <h3 className="mt-3 font-bold text-paper">{post.title}</h3>
@@ -224,18 +294,22 @@ function PostCard({ post, onChanged }: { post: BoardPost; onChanged: () => void 
                   <span className="font-bold text-fog">{r.authorName}</span>
                   <span>·</span>
                   <span>{since(r.createdAt)}</span>
-                  {r.mine && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await deleteComment(r.id);
-                        onChanged();
-                      }}
-                      className="ml-auto font-bold transition-colors hover:text-red"
-                    >
-                      delete
-                    </button>
-                  )}
+                  <span className="ml-auto">
+                    {r.mine ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await deleteComment(r.id);
+                          onChanged();
+                        }}
+                        className="font-bold transition-colors hover:text-red"
+                      >
+                        delete
+                      </button>
+                    ) : (
+                      <ReportControl target={{ commentId: r.id }} />
+                    )}
+                  </span>
                 </p>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-fog">{r.body}</p>
               </li>
@@ -346,9 +420,10 @@ export function Community() {
       </ul>
 
       <p className="mt-8 text-xs leading-relaxed text-dim">
-        Posts are public to signed-in students and are not moderated yet — write nothing you would not put
-        on a noticeboard, and take anything said about a specific university or visa with the usual
-        caution. You can delete your own posts and replies at any time.
+        Posts are public to signed-in students. You can delete your own at any time, and you can report
+        anything — a report goes to whoever runs the site, who can hide a post rather than delete it, so
+        nothing disappears because someone disliked it. Take anything said about a specific university or
+        visa with the usual caution.
       </p>
     </div>
   );
