@@ -874,3 +874,39 @@ practice route all picked it up with no other change — `hasPractice()` is what
 - The generator also returns ~40 SAThack tables that share this database; only the `ah_*` tables
   are kept, and the header now says why.
 
+## The AI essay reviewer (2026-10-14)
+
+Pillar 2's missing piece, and the first thing in this app that talks to a language model.
+
+- `src/app/api/essay-review/route.ts` — **server-side on purpose**. The key is read from
+  `GLM_API_KEY` with no `NEXT_PUBLIC_` prefix, so it never reaches the browser; a key in the client
+  bundle is readable by anyone. The provider is Zhipu's GLM (OpenAI-compatible), and `GLM_MODEL` /
+  `GLM_API_BASE_URL` let the model change without a code change (defaults `glm-4.6`,
+  `open.bigmodel.cn/api/paas/v4`).
+- **Optional like everything else.** `GET` reports `configured`, so with no key the writing tab says
+  the reviewer is not configured rather than showing a form that fails — the same posture as the
+  optional Supabase client.
+- **It returns structure, not prose:** an overall read, what is working, issues with a severity and a
+  concrete fix, notes on quoted lines, and ordered next steps. The model is asked for JSON and parsed
+  defensively anyway — fences stripped, missing fields tolerated, array caps enforced — because a
+  whole review should not be discarded over a stray backtick.
+- **It spends the owner's money and the app has no login**, so the route carries a best-effort
+  in-memory rate limit (8 per 10 minutes per IP) plus a length cap. That limit is honest but weak:
+  serverless instances are recycled and not shared, so it throttles one abuser well and a distributed
+  one poorly. A shared store is the real fix, and this app does not have one yet.
+- `src/components/dashboard/writing-coach.tsx` — the **writing ✍** tab: a short primer on what a
+  reader is doing (they read fast, they are looking for you, they distrust big claims), then the draft
+  box. The draft persists in the browser, survives a tab switch, and is cleared by the profile tab's
+  reset. A review sends the text to the provider once, for that request; the UI says so, and says the
+  result is an opinion rather than a decision.
+- **Error classification that tells the truth.** Zhipu reports an *uncredited* account as `429` +
+  code `1113`, not as `402`, so a balance problem would otherwise present as a rate limit. The route
+  separates `upstream_quota`, `upstream_auth`, `upstream_model`, `upstream_busy` and
+  `upstream_error`, and the UI gives different advice for each.
+
+**Blocked on a top-up, not on code.** The GLM key authenticates and lists models up to `glm-5.3`, but
+**every** model returns 429/1113 — the account has no credit. The key is already set as a Vercel
+production secret, so the reviewer begins working the moment the account is funded; until then it says
+exactly that instead of failing vaguely. Verified: `GET /api/essay-review` → `configured: true`, and a
+`POST` returns `upstream_quota` rather than a generic error.
+

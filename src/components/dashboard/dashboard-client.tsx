@@ -12,6 +12,7 @@ import { PracticeHistory } from "@/components/practice/practice-history";
 import { AuthPanel } from "@/components/account/auth-panel";
 import { CounselorView } from "@/components/account/counselor-view";
 import { OfferComparison } from "@/components/dashboard/offer-comparison";
+import { WritingCoach } from "@/components/dashboard/writing-coach";
 import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
@@ -546,6 +547,7 @@ const TABS = [
   { id: "documents", label: "documents" },
   { id: "exams", label: "exams" },
   { id: "portfolio", label: "portfolio" },
+  { id: "writing", label: "writing ✍" },
   { id: "who", label: "account" },
   { id: "counselor", label: "counselor" },
   { id: "profile", label: "profile" },
@@ -765,6 +767,7 @@ export function DashboardClient({
         )}
         {tab === "exams" && <ExamsTab ieltsMinimums={ieltsMinimums} />}
         {tab === "portfolio" && <PortfolioTab />}
+        {tab === "writing" && <WritingCoach />}
         {tab === "who" && (
           <div className="space-y-8">
             <AuthPanel />
@@ -783,7 +786,7 @@ export function DashboardClient({
               </p>
               <button type="button"
                 onClick={() => {
-                  ["ah.profile", "ah.apps", "ah.portfolio", "ah.exams", "ah.deadlines", "ah.checklist", "ah.shortlist"].forEach((k) =>
+                  ["ah.profile", "ah.apps", "ah.portfolio", "ah.exams", "ah.deadlines", "ah.checklist", "ah.shortlist", "ah.essayDraft"].forEach((k) =>
                     window.localStorage.removeItem(k),
                   );
                   window.location.reload();
