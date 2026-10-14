@@ -23,6 +23,12 @@ export interface Profile {
   sat?: string;
   gpa?: string;
   gpaScale?: string;
+  /**
+   * Where they said they heard about this — asked once, optional. Not analytics:
+   * the service runs none, so this is the only thing advertising can be measured
+   * with that keeps the privacy promise true.
+   */
+  referralSource?: string;
 }
 
 export type Tier = "dream" | "target" | "safe";

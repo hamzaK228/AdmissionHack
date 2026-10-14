@@ -33,6 +33,17 @@ const DEMO_DEADLINES = [
   { title: "Send transcripts to shortlist", date: "2026-12-10" },
 ];
 
+/** Asked once, and never guessed — see the note under the field. */
+const REFERRALS = [
+  { id: "instagram", label: "Instagram" },
+  { id: "tiktok", label: "TikTok" },
+  { id: "youtube", label: "YouTube" },
+  { id: "friend", label: "A friend or classmate" },
+  { id: "school", label: "My school, counselor or teacher" },
+  { id: "search", label: "A search engine" },
+  { id: "other", label: "Somewhere else" },
+];
+
 const PORTFOLIO_KINDS: { id: PortfolioKind; label: string }[] = [
   { id: "activity", label: "Extracurricular activity" },
   { id: "award", label: "Award / honor" },
@@ -152,6 +163,21 @@ function ProfileWizard({
               <p className="mt-1 text-sm font-bold text-lime">
                 ≈ ${form.budget.toLocaleString()} / year
                 {form.budget === 0 && <span className="ml-2 text-xs text-fog">(free options only)</span>}
+              </p>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="wiz-referral">how did you hear about us? (optional)</label>
+              <select id="wiz-referral" className={`${inputCls} [&>option]:bg-ink`}
+                value={form.referralSource ?? ""}
+                onChange={(e) => set("referralSource", e.target.value || undefined)}>
+                <option value="">prefer not to say</option>
+                {REFERRALS.map((r) => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs leading-relaxed text-dim">
+                Asked once, never guessed. We run no analytics and no tracking, so this is the only way
+                anyone knows what is actually reaching students — and you can skip it.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

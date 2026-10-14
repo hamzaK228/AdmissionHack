@@ -472,6 +472,8 @@ export type Database = {
           id: string;
           intake: string | null;
           level: string | null;
+          /** where the student said they heard about us — asked once, optional (migration 0006) */
+          referral_source: string | null;
           role: Database["public"]["Enums"]["ah_role"];
           updated_at: string;
         };
@@ -485,6 +487,7 @@ export type Database = {
           id: string;
           intake?: string | null;
           level?: string | null;
+          referral_source?: string | null;
           role?: Database["public"]["Enums"]["ah_role"];
           updated_at?: string;
         };
@@ -498,6 +501,7 @@ export type Database = {
           id?: string;
           intake?: string | null;
           level?: string | null;
+          referral_source?: string | null;
           role?: Database["public"]["Enums"]["ah_role"];
           updated_at?: string;
         };

@@ -83,6 +83,7 @@ function toPayload(s: LocalState): SyncPayload {
           budget: profile.budget || undefined,
           gpa: exams.gpa ?? profile.gpa,
           gpa_scale: exams.gpaScale ?? profile.gpaScale,
+          referral_source: profile.referralSource,
         }
       : null,
     exams: scored,
@@ -121,6 +122,7 @@ function fromPayload(w: SyncPayload): WorkspaceImport {
           budget: w.profile.budget ?? 0,
           gpa: w.profile.gpa,
           gpaScale: w.profile.gpa_scale,
+          referralSource: w.profile.referral_source,
         }
       : undefined,
     // Only a status the app recognises is written back: a value from a newer (or

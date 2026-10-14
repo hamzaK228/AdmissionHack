@@ -23,6 +23,7 @@ export interface SyncPayload {
     budget?: number;
     gpa?: string;
     gpa_scale?: string;
+    referral_source?: string;
   } | null;
   /**
    * One entry per exam, keyed by exam id (`ielts` | `toefl` | `sat`). The
@@ -224,6 +225,7 @@ const readWorkspace = async (
           budget: profile.data.budget ?? undefined,
           gpa: profile.data.gpa ?? undefined,
           gpa_scale: profile.data.gpa_scale ?? undefined,
+          referral_source: profile.data.referral_source ?? undefined,
         }
       : null,
     exams: Object.fromEntries(
