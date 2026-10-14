@@ -197,7 +197,7 @@ class at any time.`}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/dashboard"
+                href="/signin"
                 className="anim-glow rounded-lg bg-lime px-5 py-2.5 text-sm font-bold text-ink press-grow"
               >
                 create your class →

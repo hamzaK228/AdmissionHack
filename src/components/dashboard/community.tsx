@@ -353,10 +353,10 @@ export function Community() {
             : "No backend is configured for this deployment, so there is no board to show."}
         </p>
         <Link
-          href="/dashboard"
+          href="/signin"
           className="mt-4 inline-block rounded-lg bg-lime px-4 py-2 text-xs font-bold text-ink press-grow"
         >
-          go to the account tab →
+          sign in or create an account →
         </Link>
       </div>
     );

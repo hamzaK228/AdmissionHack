@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStore } from "@/components/dashboard/store";
+import { useAuth } from "@/lib/use-auth";
 
 const nav = [
   { href: "/how-admission-works", label: "how-it-works" },
@@ -18,6 +19,7 @@ const nav = [
 export function SiteHeader() {
   const pathname = usePathname();
   const { apps, ready } = useStore();
+  const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [condensed, setCondensed] = useState(false);
 
@@ -70,6 +72,15 @@ export function SiteHeader() {
 
           {/* actions */}
           <div className="flex shrink-0 items-center gap-1.5">
+            {!user && (
+              <Link
+                href="/signin"
+                className="hidden shrink-0 rounded-full border border-lime/40 bg-lime/10 px-3 py-1.5 text-xs font-bold text-lime transition-colors hover:bg-lime/20 sm:inline-flex"
+              >
+                sign in
+              </Link>
+            )}
+
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent("ah:open-search"))}
@@ -152,6 +163,14 @@ export function SiteHeader() {
                 </span>
               )}
             </Link>
+            {!user && (
+              <Link
+                href="/signin"
+                className="mt-2 block rounded-xl border border-lime/40 bg-lime/10 px-3 py-3 text-center text-sm font-bold text-lime"
+              >
+                sign in / create account
+              </Link>
+            )}
             <Link
               href="/universities"
               className="mt-2 block rounded-xl bg-lime px-3 py-3 text-center text-sm font-bold text-ink"

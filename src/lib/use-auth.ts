@@ -12,7 +12,7 @@ export interface AuthUser {
 }
 
 export type AuthResult =
-  | { ok: true; needsConfirmation?: boolean }
+  | { ok: true; needsConfirmation?: boolean; alreadyRegistered?: boolean }
   | { ok: false; error: string };
 
 const ROLES: readonly AhRole[] = ["student", "counselor", "parent"];
@@ -123,9 +123,24 @@ export function useAuth() {
     }
     // with confirmation on, GoTrue returns a user but no session
     const needsConfirmation = !data.session;
-    if (needsConfirmation) setNeedsConfirmation(email);
+    /**
+     * An address that already has an account comes back as a SUCCESS with no session
+     * and an EMPTY `identities` array. GoTrue does that deliberately — it will not
+     * tell a stranger which addresses are registered — but the consequence is that a
+     * returning student who tries to sign up again gets a silent nothing: no new
+     * account, no confirmation email, and no explanation. It is the single most
+     * confusing thing this form can do, and distinguishing it costs one line: the
+     * remedy is "sign in" or "reset your password", not "wait for an email that was
+     * never sent".
+     *
+     * This matters more than usual here because the account pool is shared with the
+     * other product: a student who signed up there already has an account here.
+     */
+    const identities = (data.user as { identities?: unknown[] } | null)?.identities;
+    const alreadyRegistered = Array.isArray(identities) && identities.length === 0;
+    if (needsConfirmation && !alreadyRegistered) setNeedsConfirmation(email);
     await load();
-    return { ok: true, needsConfirmation };
+    return { ok: true, needsConfirmation, alreadyRegistered };
   };
 
   const signIn = async (email: string, password: string): Promise<AuthResult> => {

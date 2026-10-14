@@ -21,23 +21,40 @@ not prove the *screens*. Before paying for traffic, walk the whole path once, by
 Anything that breaks in that walk will break for every visitor an advert sends you — silently, and at your
 expense.
 
-## Blocker 1 — email, and it is the serious one
+## Blocker 1 — signups, and it is *not* what I first said
 
-**Confirmation is ON:** the auth settings report `mailer_autoconfirm: false`. A new student therefore
-**cannot sign in until they click a link in an email.** The signup path depends entirely on mail delivery.
+**Corrected 2026-10-14 after reading the logs, because my first diagnosis was wrong.** I said the mailer was
+the problem. It is not. The auth records show users on 9–10 October being confirmed **about a minute after
+signing up**, so delivery works.
 
-Delivery currently goes through **Supabase's built-in mailer**, which is documented as intended for testing
-and is heavily rate-limited (a small number of messages per hour). The other product's 114 users arrived
-organically over weeks, so it never mattered. **An advertising campaign produces signup bursts, and that is
-exactly when a testing mailer fails** — each failure is a lost student who will not try twice.
+What actually happened on 14 October, from the edge logs:
 
-**Fix: configure a custom SMTP provider.** Resend's free tier covers 3,000 emails a month, which is far
-beyond what an early campaign will generate. Check the current state in the Supabase dashboard under
-**Authentication → Emails**.
+```
+10:01:29  POST | 200 | /auth/v1/signup?redirect_to=.../dashboard
+10:02:36  POST | 200 | /auth/v1/resend?redirect_to=.../dashboard
+```
 
-**The good news is that this one decision pays for itself twice:** the same SMTP provider unblocks
-**deadline reminders**, the last unbuilt item of the plan's first phase. Email was blocking both, and only
-one of them is optional.
+Both returned **200** — and **no account was created and no email was sent**. That is GoTrue's behaviour for
+an address that **already has an account**: it returns a success carrying an empty `identities` array and
+stays silent, deliberately, so a stranger cannot discover which addresses are registered.
+
+Because the account pool is **shared with the other product**, this is easy to hit: anyone who has signed up
+there **already has an account here**, and signing up again does nothing whatsoever.
+
+**Fixed in the app:** the sign-up form now distinguishes the case and says so — *"that email already has an
+account — sign in, or use forgot password"* — and switches to the sign-in form. Silently doing nothing was
+the worst behaviour available, and it is now impossible.
+
+**If it happens to you:** the address you tried already has an account. Use **sign in**, or **forgot
+password** if you do not know the password.
+
+**Still worth doing before a campaign — but for a different reason.** Configure custom SMTP. Not because
+delivery is broken, since it demonstrably works at this volume, but because Supabase's built-in mailer is
+documented as a testing service that is rate-limited per hour, and a campaign produces bursts. **The same
+provider unblocks deadline reminders**, the last unbuilt item of the plan's first phase.
+
+**Confirmation is ON** (`mailer_autoconfirm: false`), which is fine and working — a new student does have to
+click a link, and the links do arrive.
 
 ## Blocker 2 — the legal placeholders are visible on the live site
 

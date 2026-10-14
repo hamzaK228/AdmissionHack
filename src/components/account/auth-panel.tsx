@@ -169,7 +169,15 @@ export function AuthPanel() {
               : await signUp(email, password, role, name);
           setBusy(false);
           if (!res.ok) setMsg({ tone: "err", text: res.error });
-          else if (mode === "signup" && res.needsConfirmation) {
+          else if (mode === "signup" && res.alreadyRegistered) {
+            setMsg({
+              tone: "err",
+              text:
+                "That email already has an account — probably because it works across both of our sites. " +
+                "Nothing new was created and no email was sent. Sign in below, or use “forgot password” to set one.",
+            });
+            setMode("signin");
+          } else if (mode === "signup" && res.needsConfirmation) {
             setMsg({
               tone: "ok",
               text: "account created. Check your email to confirm it, then sign in.",
