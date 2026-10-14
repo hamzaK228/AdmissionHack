@@ -1175,5 +1175,30 @@ purpose: with no file, the default is all rights reserved — legitimate, and wo
 both proprietary datasets whose terms restrict redistribution; the footer credits them and links to the
 official pages, which is good practice but **not a licence**. A takedown or licence demand over numbers on
 1,500 pages is more probable than any patent dispute — and the fix costs the product little, because a
-choosing student decides on country, cost and fit, not on a rank chip.
+  choosing student decides on country, cost and fit, not on a rank chip.
+
+## Launch readiness, checked live (2026-10-14)
+
+The owner is about to advertise the site. Checking the running system first turned up two facts that change
+the order of work.
+
+- **`ah_profiles` is 0.** Every one of the 114 confirmed accounts belongs to SAThack, so **the
+  signup-to-sync journey has never been completed by a real user in production.** The 39-assertion suite
+  proves the API and the consent model with throwaway accounts; it does not prove the screens. The whole
+  path — sign up → confirm → sync → upload → counselor accepts → revokes — needs walking once, by hand,
+  before any money is spent on traffic.
+- **Email confirmation is ON** (`mailer_autoconfirm: false`), so a new student cannot sign in until they
+  click a link in an email. Signups therefore depend entirely on mail delivery, and delivery goes through
+  Supabase's built-in mailer — documented as a testing service with a per-hour limit. 114 organic signups
+  spread over weeks never hit that limit; **an advertising campaign produces bursts, which is when a testing
+  mailer fails**, and every failure is a student who does not try twice. **The fix is one decision with two
+  payoffs: a custom SMTP provider also unblocks deadline reminders**, the last unbuilt item of Phase 1.
+- **`ah_profiles.referral_source` (migration 0006).** The Privacy Policy states as fact that there is no
+  analytics, no tracking and no cookies, and Instagram advertising normally wants a pixel for conversion
+  tracking. Rather than quietly make that statement false, the profile wizard now asks **"how did you hear
+  about us?"** once — optional, skippable, stored with a CHECK vocabulary. With server-side counting
+  (`ah_profiles.created_at` per day is signups per day), that measures a campaign honestly. `docs/launch.md`
+  carries the queries and an explicit framing of the choice, including what adding a pixel would oblige.
+- Also verified: **both sites are up** (SAThack and AdmissionHack both 200), and SAThack's data was untouched
+  by this session's four migrations — 5,040 questions, 114 profiles, 6,817 attempts, all intact.
 
