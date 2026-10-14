@@ -14,6 +14,7 @@ import { CounselorView } from "@/components/account/counselor-view";
 import { OfferComparison } from "@/components/dashboard/offer-comparison";
 import { WritingCoach } from "@/components/dashboard/writing-coach";
 import { RequirementChecker } from "@/components/dashboard/requirement-checker";
+import { ArrivalTimeline } from "@/components/dashboard/arrival-timeline";
 import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
@@ -668,7 +669,15 @@ export function DashboardClient({
         {tab === "match" && <MatchTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "universities" && <CollegeList uniIndex={uniIndex} />}
         {tab === "roadmap" && <RoadmapTab onGo={(t) => setTab(t as TabId)} />}
-        {tab === "offers" && <OfferComparison uniIndex={uniIndex} />}
+        {tab === "offers" && (
+          <>
+            <OfferComparison uniIndex={uniIndex} />
+            {/* the next act only exists once there is an offer to act on */}
+            {apps.some((a) => a.status === "offer" || a.status === "enrolled") && (
+              <ArrivalTimeline uniIndex={uniIndex} />
+            )}
+          </>
+        )}
         {tab === "deadlines" && (
           <div className="max-w-3xl">
             {nextDeadline && (

@@ -980,3 +980,50 @@ in the abstract.
   unguided-country fallback, unknown-slug safety, sort order) run directly under Node's type stripping
   — no test dependency added. `tsc` and a 1,557-page build pass.
 
+## The AI reviewer is live (2026-10-14)
+
+The DeepSeek key is in, and the reviewer answers on production rather than returning a configuration
+error.
+
+- `GET /api/essay-review` → `{"configured":true,"model":"deepseek-chat"}`, and a `POST` with a real draft
+  returns a structured review — `read`, `strengths`, `issues`, `lineNotes`, `nextSteps` — with the
+  draft's own words quoted back. On a deliberately generic test essay it correctly refused to be
+  encouraging: *"a collection of generic claims that could belong to almost any applicant"*, plus the
+  observation that it is far under the length the form requires and ends by addressing the university
+  instead of revealing the writer.
+- **The model was chosen by measurement, not by assumption.** `deepseek-chat` — DeepSeek's stable alias,
+  currently served by DeepSeek-V4.1-Flash — returns the structured review cleanly and fast.
+  `deepseek-v4-pro` answers `200` with **empty content** for this request shape, so `.env.example` records
+  it as not usable rather than leaving it as an inviting switch.
+- The key lives in `.env.local` (gitignored) and as a Vercel **production secret**. `.env.example`
+  documents the variable names and never a value.
+- **A correction worth keeping:** earlier notes here said no redeploy would be needed. That was wrong —
+  Vercel does not hand a new environment variable to a deployment that has already been built, so it
+  took a fresh deploy before the key took effect.
+
+## After the offer — visa and arrival (2026-10-14)
+
+This closes the student journey. The eight admission phases end at "decide offers"; everything that can
+still cost someone the year happens after it, and until now the product simply stopped there.
+
+- **`/arrival`** — a public guide (footer nav, sitemap, and linked from the journey page as the step
+  after step 8): the eight post-offer steps measured backwards from enrolment, the per-country numbers
+  that actually gate an intake, and the first two weeks after landing.
+- **The dated version lives in the decisions tab** (`src/lib/arrival.ts` + `arrival-timeline.tsx`), and
+  appears only once a university is marked *offer* or *enrolled* — before that it is not the student's
+  problem yet. It dates each step from the student's own intake month, marks **you are here**, and writes
+  the dates they choose into the same deadline list as everything else, so the deposit and the visa
+  appointment sit beside the exam dates rather than in a paragraph read once.
+- **It reuses the timeline's rule and its arithmetic.** `shiftMonths` is now exported from `roadmap.ts`
+  rather than copied, so a step gets a date only when the curated data states an offset, and nothing is
+  invented — the same discipline as the admission timeline.
+- **Honest about the two figures that matter.** Visa financial proof and processing time are the country
+  guide's own words, shown verbatim rather than paraphrased, because those numbers are what decide whether
+  an intake is possible at all — and processing times lengthen sharply in summer, which the page says out
+  loud instead of implying the dates are commitments.
+- **21 assertions** over the dating logic: Fall vs Spring anchoring, "you are here" moving through the
+  sequence, the everything-behind-you case, and the undated no-intake case. One of them failed first and
+  was my error, not the data's — I had asserted the windows were monotonic, but they deliberately overlap,
+  because the financial statement has to age in the account *while* you are still deciding. The assertion
+  was corrected to test the property that actually holds. `tsc` and a 1,558-page build pass.
+

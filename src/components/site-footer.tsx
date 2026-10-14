@@ -9,6 +9,7 @@ const columns = [
       { href: "/exams", label: "exams/" },
       { href: "/writing", label: "writing/" },
       { href: "/scholarships", label: "scholarships/" },
+      { href: "/arrival", label: "arrival/" },
       { href: "/countries", label: "countries/" },
       { href: "/dashboard", label: "dashboard/" },
     ],

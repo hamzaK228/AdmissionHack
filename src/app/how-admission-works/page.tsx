@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { journeySteps } from "@/data/journey";
-import { PageHero } from "@/components/ui";
+import { PageHero, CtaCard } from "@/components/ui";
 import { Reveal } from "@/components/reveal";
 
 export const metadata: Metadata = {
@@ -58,6 +58,17 @@ export default function HowAdmissionWorksPage() {
               timeline backwards from the earliest deadline on your shortlist, then subtract a
               two-week buffer from everything.
             </p>
+          </div>
+        </Reveal>
+
+        <Reveal delay={200}>
+          <div className="mt-8">
+            <CtaCard
+              href="/arrival"
+              title="What happens after the offer"
+              description="The journey above ends at “decide offers”. The deposit deadline, the financial statement that has to age before it counts, the visa appointment and the residence-permit window all come after it — with verified financial-proof amounts and processing times for 13 destinations."
+              cta="read the arrival sequence"
+            />
           </div>
         </Reveal>
       </div>

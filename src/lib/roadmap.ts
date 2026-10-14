@@ -84,8 +84,8 @@ const parseISO = (s: string): Date | null => {
 export const toISODate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-/** First of the month, `months` earlier (or later, for a negative). */
-const shiftMonths = (d: Date, months: number) => new Date(d.getFullYear(), d.getMonth() - months, 1);
+/** First of the month, `months` earlier (or later, for a negative). Shared with the arrival timeline. */
+export const shiftMonths = (d: Date, months: number) => new Date(d.getFullYear(), d.getMonth() - months, 1);
 
 /** "Fall 2027" → September 2027; "Spring 2028" → January 2028. */
 export function parseIntake(intake: string): { year: number; month: number } | null {
