@@ -1,6 +1,7 @@
 import { satBank } from "./sat";
 import { ieltsBank } from "./ielts";
 import { toeflBank } from "./toefl";
+import { detBank } from "./det";
 import type { PracticeBank, Question } from "./types";
 
 /**
@@ -10,7 +11,7 @@ import type { PracticeBank, Question } from "./types";
  * `sat.ts` plus a line here — which is the point of the blueprint: the engine does
  * not change when an exam is added.
  */
-const banks: PracticeBank[] = [satBank, ieltsBank, toeflBank];
+const banks: PracticeBank[] = [satBank, ieltsBank, toeflBank, detBank];
 
 export function bankFor(examId: string): PracticeBank | null {
   return banks.find((b) => b.set.examId === examId) ?? null;

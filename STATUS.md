@@ -910,3 +910,27 @@ production secret, so the reviewer begins working the moment the account is fund
 exactly that instead of failing vaguely. Verified: `GET /api/essay-review` → `configured: true`, and a
 `POST` returns `upstream_quota` rather than a generic error.
 
+## DET bank, and the model vendor becomes configuration (2026-10-14)
+
+- **DET is the fourth practice bank**, and the last of the language exams the plan lists:
+  `src/data/practice/det.ts`, live at `/exams/det/practice`. Twelve original questions, and
+  deliberately not a fifth reading-comprehension set — DET is adaptive and leans on recognising and
+  completing language, so this bank leads with the word-level types the other three do not use at all
+  ("which of these is a real English word", and fill-the-blank sentences where grammar *and* meaning
+  must both fit) before one ordinary passage. **The four banks now total 60 questions**: SAT 24,
+  IELTS 12, TOEFL 12, DET 12. All four validated mechanically (unique ids, every answer among its
+  choices, no duplicate choices, a substantive explanation on each).
+- **The model vendor is now configuration rather than code.** The essay reviewer reads
+  `AI_API_KEY` / `AI_API_BASE_URL` / `AI_MODEL` and defaults to **DeepSeek**
+  (`deepseek-chat`, `api.deepseek.com`); moving back to Zhipu GLM, or to OpenAI, is three env vars
+  and no code change. The provider has already changed once — from GLM, which was out of credit — and
+  it should not cost an edit again.
+- **Both dialects of "no money" are handled**, which matters because they look like different bugs:
+  DeepSeek answers with `402`, while Zhipu answers `429` + code `1113` (indistinguishable from a rate
+  limit). Both now map to `upstream_quota`, kept apart from `upstream_busy`.
+- The dead GLM secret was deleted from the Vercel project rather than left lying around.
+
+**Waiting on you for the reviewer to actually answer:** a **DeepSeek API key**. The code and the env
+names are ready; pasting the key into `.env.local` and the Vercel production secret is the whole of
+the work, and it needs no redeploy because the route reads the key at request time.
+
