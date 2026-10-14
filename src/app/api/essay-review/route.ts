@@ -1,4 +1,14 @@
 import { NextResponse } from "next/server";
+import {
+  AI_MODEL,
+  aiConfigured,
+  askModel,
+  checkRate,
+  clientIp,
+  signedIn,
+  signsInRequired,
+  type ChatMessage,
+} from "@/lib/ai";
 
 /**
  * AI essay review — the one place in this app that talks to a model.
@@ -25,44 +35,8 @@ export const dynamic = "force-dynamic";
 /** A model call is slow; Vercel's default would cut it off. */
 export const maxDuration = 60;
 
-const BASE = process.env.AI_API_BASE_URL ?? "https://api.deepseek.com";
-const MODEL = process.env.AI_MODEL ?? "deepseek-chat";
-
 const MIN_CHARS = 200;
 const MAX_CHARS = 18_000;
-
-/**
- * Who is allowed to spend the owner's credit.
- *
- * The service is free to students and the operator pays per review, which makes an
- * open endpoint someone else's bill. A public route was fine while it was only ever
- * tested by hand; it is not fine now. So the route asks Supabase to validate the
- * caller's access token — the same session the rest of the app already has — and
- * refuses anyone without one.
- *
- * If this deployment has no Supabase configured there is no identity to check
- * against and no way for a student to sign in, so the gate stands aside rather than
- * locking the feature out of a local checkout.
- */
-async function signedIn(req: Request): Promise<boolean> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return true;
-
-  const header = req.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return false;
-
-  try {
-    const res = await fetch(`${url}/auth/v1/user`, {
-      headers: { apikey: anon, Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(8000),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 const KIND_LABEL: Record<string, string> = {
   personal: "a personal statement (undergraduate, Common App style)",
@@ -96,38 +70,12 @@ Return ONLY a JSON object, with no markdown fences and no commentary around it, 
 }
 Cap the arrays: strengths 3, issues 5, lineNotes 6, nextSteps 4.`;
 
-/* ── best-effort rate limiting ────────────────────────────────────────────────
- * This endpoint spends the owner's credits, and the app has no login, so some
- * ceiling is owed. It is per-instance and in-memory: serverless instances are
- * recycled and not shared, so it throttles a single abuser well and a
- * distributed one poorly. That is a real limit, not a pretend one — the honest
- * fix is a shared store, which this app does not have yet.
- */
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 8;
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  // keep the map from growing without bound
-  if (hits.size > 5000) {
-    for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k);
-  }
-  return recent.length > MAX_PER_WINDOW;
-}
-
-const clientIp = (req: Request) =>
-  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-
 /** Does this deployment have a key, and does it expect a signed-in caller? */
 export async function GET() {
   return NextResponse.json({
-    configured: Boolean(process.env.AI_API_KEY),
-    model: MODEL,
-    requiresSignIn: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    configured: aiConfigured(),
+    model: AI_MODEL,
+    requiresSignIn: signsInRequired(),
   });
 }
 
@@ -140,12 +88,11 @@ interface Body {
 }
 
 export async function POST(req: Request) {
-  const key = process.env.AI_API_KEY;
-  if (!key) {
+  if (!aiConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
   }
 
-  if (rateLimited(clientIp(req))) {
+  if (checkRate("essay", clientIp(req), 8)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
@@ -175,68 +122,22 @@ export async function POST(req: Request) {
     lines.push(`The stated word limit is about ${Math.round(body.wordLimit)} words.`);
   lines.push("", "Here is the draft:", "", essay);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 55_000);
-  try {
-    const upstream = await fetch(`${BASE}/chat/completions`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: lines.join("\n") },
-        ],
-        temperature: 0.4,
-        max_tokens: 1600,
-      }),
-    });
-
-    if (!upstream.ok) {
-      // Logged server-side for diagnosis; the client gets a code, not the body,
-      // because an upstream error body can echo credential fragments.
-      const detail = await upstream.text().catch(() => "");
-      console.error("[essay-review] upstream", upstream.status, detail.slice(0, 400));
-      /**
-       * Providers disagree about how to say "this account has no money", and the
-       * wrong code sends whoever runs the deployment chasing the wrong thing:
-       * DeepSeek uses `402`, while Zhipu uses `429` + code `1113`, which would
-       * otherwise pattern-match to a rate limit. Both map to `upstream_quota`;
-       * a plain `429` stays `upstream_busy`, because "top up" and "wait a
-       * minute" are different advice.
-       */
-      const code =
-        upstream.status === 401 || upstream.status === 403
-          ? "upstream_auth"
-          : /1211|模型不存在|model not found/i.test(detail)
-            ? "upstream_model"
-            : upstream.status === 402 ||
-                (upstream.status === 429 &&
-                  /1113|余额|balance|quota|credit|insufficient/i.test(detail))
-              ? "upstream_quota"
-              : upstream.status === 429
-                ? "upstream_busy"
-                : "upstream_error";
-      return NextResponse.json({ error: code }, { status: 502 });
-    }
-
-    const payload = (await upstream.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const raw = payload.choices?.[0]?.message?.content ?? "";
-    const review = parseReview(raw);
-    if (!review) {
-      console.error("[essay-review] unparseable model output");
-      return NextResponse.json({ error: "bad_model_output" }, { status: 502 });
-    }
-    return NextResponse.json({ ok: true, model: MODEL, review });
-  } catch (e) {
-    const aborted = e instanceof Error && e.name === "AbortError";
-    return NextResponse.json({ error: aborted ? "timeout" : "network" }, { status: 504 });
-  } finally {
-    clearTimeout(timer);
+  const messages: ChatMessage[] = [
+    { role: "system", content: SYSTEM },
+    { role: "user", content: lines.join("\n") },
+  ];
+  const res = await askModel(messages, { temperature: 0.4, maxTokens: 1600 });
+  if (!res.ok) {
+    const status = res.error === "timeout" || res.error === "network" ? 504 : 502;
+    return NextResponse.json({ error: res.error }, { status });
   }
+
+  const review = parseReview(res.text);
+  if (!review) {
+    console.error("[essay-review] unparseable model output");
+    return NextResponse.json({ error: "bad_model_output" }, { status: 502 });
+  }
+  return NextResponse.json({ ok: true, model: AI_MODEL, review });
 }
 
 /* ── parsing ──────────────────────────────────────────────────────────────────

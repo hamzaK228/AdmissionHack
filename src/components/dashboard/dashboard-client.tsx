@@ -15,6 +15,7 @@ import { OfferComparison } from "@/components/dashboard/offer-comparison";
 import { WritingCoach } from "@/components/dashboard/writing-coach";
 import { RequirementChecker } from "@/components/dashboard/requirement-checker";
 import { ArrivalTimeline } from "@/components/dashboard/arrival-timeline";
+import { Advisor } from "@/components/dashboard/advisor";
 import { Community } from "@/components/dashboard/community";
 import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
@@ -555,6 +556,9 @@ function OverviewTab({ uniIndex, onGo }: { uniIndex: Record<string, SlimUni>; on
           </div>
         </div>
       )}
+
+      {/* the synthesis layer: everything above, read together and ordered */}
+      <Advisor uniIndex={uniIndex} />
     </div>
   );
 }

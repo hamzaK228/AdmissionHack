@@ -15,7 +15,7 @@ import { universities, countries, exams, journeySteps } from "@/data/all";
  * that forgets the variable then publishes a sitemap that is obviously wrong,
  * rather than one that confidently points crawlers at the wrong host.
  */
-const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://admissionhack.app").replace(/\/+$/, "");
+const base = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://admissionhack.app").replace(/\/+$/, "");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

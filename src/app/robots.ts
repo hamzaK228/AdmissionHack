@@ -12,7 +12,7 @@ import type { MetadataRoute } from "next";
  * Same origin knob as the sitemap, for the same reason: the domain is still
  * undecided.
  */
-const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://admissionhack.app").replace(/\/+$/, "");
+const base = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://admissionhack.app").replace(/\/+$/, "");
 
 export default function robots(): MetadataRoute.Robots {
   return {

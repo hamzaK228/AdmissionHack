@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/components/dashboard/store";
 import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/lib/supabase";
+import { aiError } from "@/lib/ai-errors";
 import { Eyebrow } from "@/components/ui";
 import type { Review } from "@/app/api/essay-review/route";
 
@@ -39,25 +40,6 @@ const SEVERITY: Record<Review["issues"][number]["severity"], string> = {
   high: "border-red/40 text-red",
   medium: "border-amber/40 text-amber",
   low: "border-line2 text-fog",
-};
-
-const ERRORS: Record<string, string> = {
-  not_configured: "The reviewer is not switched on for this deployment — no model key is configured.",
-  rate_limited: "That is a lot of reviews in a short time. Wait a few minutes and try again.",
-  sign_in_required:
-    "Reviews cost money to run, so they are limited to accounts. Sign in on the account tab — the primer and the Writing School work without one.",
-  too_short: "The draft is too short to review — paste at least a couple of paragraphs.",
-  too_long: "The draft is longer than this reviewer accepts. Trim it, or review it in sections.",
-  timeout: "The model took too long to answer. Try again, or review a shorter section.",
-  upstream_auth: "The model key was rejected. Whoever runs this deployment needs to check it.",
-  upstream_quota:
-    "The model account has no credit left, so the reviewer cannot run. This is a billing problem on the deployment's side — nothing is wrong with your draft.",
-  upstream_busy: "The model provider is rate-limiting right now. Try again in a minute.",
-  upstream_model: "The configured model name is not available on this account.",
-  upstream_error: "The model provider returned an error. Try again in a moment.",
-  bad_model_output: "The model's answer could not be read. Try again.",
-  network: "Could not reach the reviewer. Check your connection and try again.",
-  bad_request: "Something went wrong sending the draft. Try again.",
 };
 
 export function WritingCoach() {
@@ -129,7 +111,7 @@ export function WritingCoach() {
       });
       const data = (await res.json()) as { ok?: boolean; review?: Review; error?: string };
       if (!res.ok || !data.ok || !data.review) {
-        setError(ERRORS[data.error ?? ""] ?? ERRORS.upstream_error);
+        setError(aiError(data.error));
       } else {
         setReview(data.review);
         requestAnimationFrame(() =>
@@ -137,7 +119,7 @@ export function WritingCoach() {
         );
       }
     } catch {
-      setError(ERRORS.network);
+      setError(aiError("network"));
     } finally {
       setBusy(false);
     }
