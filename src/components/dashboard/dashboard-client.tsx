@@ -360,6 +360,11 @@ function PortfolioTab() {
         Build your Common App-style portfolio: activities, awards, work and volunteering. Write it
         once here — reuse it in every application and essay.
       </p>
+      <p className="mt-3 text-xs">
+        <Link href="/cv" className="font-bold text-lime/80 transition-colors hover:text-lime">
+          → turn this and your scores into a CV, ready to print
+        </Link>
+      </p>
 
       <form
         onSubmit={(e) => {

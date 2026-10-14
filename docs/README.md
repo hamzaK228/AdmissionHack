@@ -6,6 +6,7 @@ Start where you are, not at the top.
 |---|---|
 | **The owner**, deciding what to do next | [`../STATUS.md`](../STATUS.md) — the running log and the honest ledger of what is built, what is not, and whose action unblocks the rest |
 | **The owner**, filling in what only you can | [`owner-input.md`](owner-input.md) — every blank, with suggested wording |
+| **The owner**, working out what to do next | [`finish-plan.md`](finish-plan.md) — every step left, in order, with who does it |
 | **The owner**, about to advertise | [`launch.md`](launch.md) — the pre-launch checklist: the email blocker, the untested signup path, and how to measure ads without tracking |
 | **The owner**, on the legal and IP ground | [`ip-and-licensing.md`](ip-and-licensing.md) · [`legal.md`](legal.md) |
 | **A developer**, changing code | [`architecture.md`](architecture.md) — the reference: data model, consent model, operations, failure modes |
@@ -18,6 +19,9 @@ Start where you are, not at the top.
 - **[`architecture.md`](architecture.md)** — what the system is: the 14 tables, the consent model as one
   database function, why several products share one database, the AI layer, how to add content, and the
   operational commands with the failure modes they cause.
+- **[`finish-plan.md`](finish-plan.md)** — the step-by-step to done: the four steps that gate advertising,
+  the feature work that does not depend on the owner, what needs an owner decision first, and the shortest
+  path to "finished".
 - **[`launch.md`](launch.md)** — what to check before paying for traffic, written from a live check of the
   system: confirmation email is on so signups depend on mail delivery, no real user has yet completed the
   signup path, and the two honest ways to measure an advert without adding tracking.

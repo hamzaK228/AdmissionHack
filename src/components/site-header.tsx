@@ -36,7 +36,7 @@ export function SiteHeader() {
   return (
     <>
       {/* Floating pill nav — inset from the viewport edge, not a full-width bar */}
-      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3">
+      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 print:hidden">
         <div
           className={`mx-auto flex h-14 max-w-[1360px] items-center justify-between gap-3 rounded-full border px-4 transition-[background-color,border-color,box-shadow] duration-300 sm:px-5 ${
             condensed
