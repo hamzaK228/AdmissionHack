@@ -24,6 +24,7 @@ import {
   type CloudReport,
 } from "@/lib/cloud-files";
 import { DOC_FOLDERS } from "@/data/document-folders";
+import { universityBySlug } from "@/data/directory";
 
 const inputCls =
   "w-full rounded-lg border border-line bg-ink px-3.5 py-2.5 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-lime/60";
@@ -326,13 +327,14 @@ function CounselorRoster() {
                 {openData.universities.map((u) => {
                   const day = (iso: string) =>
                     new Date(iso + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short" });
+                  const name = universityBySlug(u.slug)?.name ?? u.slug.replace(/-/g, " ");
                   return (
                     <li
                       key={u.slug}
                       className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2 text-xs"
                     >
                       <span className="min-w-0">
-                        <span className="block truncate text-paper">{u.slug.replace(/-/g, " ")}</span>
+                        <span className="block truncate text-paper">{name}</span>
                         {(u.submittedOn || u.decidedOn) && (
                           <span className="text-[10px] text-dim">
                             {u.submittedOn && <>submitted {day(u.submittedOn)}</>}

@@ -805,3 +805,40 @@ Migration `0002_document_folders_and_groups.sql`, applied to the live project.
   a file input, so the drag-drop/picker path is covered by the storage assertions in the script,
   not by a simulated click.
 
+## Offer comparison, calendar export, tracker polish (2026-10-14)
+
+Completing the student journey end-to-end: the moment offers arrive, the question shifts from
+"will I get in?" to "which one should I take?" — and the tracker now answers it.
+
+- **Offer comparison tab (`/dashboard` → decisions 🎓)** — Pillar 6. Side-by-side comparison of every
+  university with a decision status (offer, waitlisted, rejected, enrolled). For offers, a table
+  shows: name + country, QS/ARWU rank, tuition range, a cost bar against the student's own budget,
+  and a **value score** that balances cheapness and high rank. The best-value offer is starred.
+  Single offer? It shows the data plainly and says "one data point is not a comparison." Waitlists
+  get the continued-interest reminder; rejections are greyed and marked "not this time"; enrolled
+  gets a 🎓 badge. `src/components/dashboard/offer-comparison.tsx`.
+- **Calendar export** — every deadline on the deadlines tab now has an `→ export to calendar (.ics)`
+  link. RFC 5545-ish, good for Apple Calendar, Google Calendar and Outlook. All-day events, folded
+  lines, proper escaping. `src/lib/calendar-export.ts`.
+- **Counselor view: real university names** — the read-only workspace for counselors was showing
+  `u.slug.replace(/-/g, " ")` (raw slugs like "university-of-michigan-ann-arbor"). It now resolves
+  through `universityBySlug` from the directory, so counselors see "University of Michigan, Ann
+  Arbor".
+- **Per-application checklist hints on tracker cards** — each `AppCard` now shows a mini checklist
+  based on its status: planning → check requirements + English policy; preparing → transcripts,
+  recommendations, personal statement, fee; submitted → track portal; waitlisted → letter of
+  continued interest; offer → compare scholarship and confirm before reply date. Plus a tuition
+  hint when the directory knows it.
+
+**Build verification:** `npm run build` passes (1,554 pages), `npx tsc --noEmit` clean.
+
+**Still waiting on you:**
+1. Paste `supabase/migrations/0003_application_tracker.sql` into the sathack project SQL editor
+   (same as the ecosystem migration), then regenerate `src/lib/database.types.ts`.
+2. Add `https://admissionhack-seven.vercel.app` to **Redirect URLs** in the sathack project
+   (Authentication → URL Configuration).
+3. Delete the throwaway test accounts (`student@example.com`, `counselor@example.com`).
+4. Decide: email provider (Resend/SendGrid/AWS SES) for deadline reminders, and whether you have
+   an OpenAI/Anthropic key for the AI essay reviewer / AI advisor.
+5. Custom domain and license file — repo is public with all rights reserved by default.
+

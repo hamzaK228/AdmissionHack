@@ -11,6 +11,8 @@ import { CloudSync } from "@/components/dashboard/cloud-sync";
 import { PracticeHistory } from "@/components/practice/practice-history";
 import { AuthPanel } from "@/components/account/auth-panel";
 import { CounselorView } from "@/components/account/counselor-view";
+import { OfferComparison } from "@/components/dashboard/offer-comparison";
+import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
@@ -540,6 +542,7 @@ const TABS = [
   { id: "universities", label: "universities" },
   { id: "deadlines", label: "deadlines" },
   { id: "roadmap", label: "timeline ⏱" },
+  { id: "offers", label: "decisions 🎓" },
   { id: "documents", label: "documents" },
   { id: "exams", label: "exams" },
   { id: "portfolio", label: "portfolio" },
@@ -661,6 +664,7 @@ export function DashboardClient({
         {tab === "match" && <MatchTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "universities" && <CollegeList uniIndex={uniIndex} />}
         {tab === "roadmap" && <RoadmapTab onGo={(t) => setTab(t as TabId)} />}
+        {tab === "offers" && <OfferComparison uniIndex={uniIndex} />}
         {tab === "deadlines" && (
           <div className="max-w-3xl">
             {nextDeadline && (
@@ -711,6 +715,13 @@ export function DashboardClient({
                 onClick={() => DEMO_DEADLINES.forEach((d) => store.addDeadline(d))}
                 className="mt-3 text-xs font-bold text-lime/70 hover:text-lime">
                 → or load an example plan to see how it works
+              </button>
+            )}
+            {deadlines.length > 0 && (
+              <button type="button"
+                onClick={() => downloadIcs(deadlines.map((d) => ({ title: d.title, date: d.date })))}
+                className="mt-3 text-xs font-bold text-lime/70 hover:text-lime">
+                → export to calendar (.ics)
               </button>
             )}
           </div>

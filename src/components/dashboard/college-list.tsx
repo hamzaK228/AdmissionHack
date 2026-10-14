@@ -119,8 +119,46 @@ function AppCard({ u, app }: { u: SlimUni; app: AppEntry }) {
 
         <p className={`mt-2 text-[11px] leading-relaxed ${needsYou ? "text-fog" : "text-dim"}`}>{spec.next}</p>
 
+        {/* tuition hint when we know it */}
+        {u.tuitionMax != null && (
+          <p className="mt-2 text-[11px] text-dim">
+            ≈ ${u.tuitionMin != null ? `${Math.round(u.tuitionMin / 1000)}k` : "—"} –{" "}
+            {Math.round(u.tuitionMax / 1000)}k / yr · {u.countryName}
+          </p>
+        )}
+
+        {/* per-status mini checklist */}
+        <ul className="mt-2 space-y-1">
+          {status === "planning" && (
+            <>
+              <li className="text-[10px] text-fog">□ check program requirements on the official site</li>
+              <li className="text-[10px] text-fog">□ confirm English-test policy (IELTS / TOEFL / DET)</li>
+            </>
+          )}
+          {status === "preparing" && (
+            <>
+              <li className="text-[10px] text-fog">□ transcript + diploma (sworn translation if needed)</li>
+              <li className="text-[10px] text-fog">□ recommendation letters ×2–3</li>
+              <li className="text-[10px] text-fog">□ personal statement / motivation letter</li>
+              <li className="text-[10px] text-fog">□ pay application fee</li>
+            </>
+          )}
+          {status === "submitted" && (
+            <li className="text-[10px] text-fog">□ track portal for interview or document requests</li>
+          )}
+          {status === "waitlisted" && (
+            <li className="text-[10px] text-amber">□ send letter of continued interest (if allowed)</li>
+          )}
+          {status === "offer" && (
+            <>
+              <li className="text-[10px] text-mint">□ compare scholarship and deposit deadline</li>
+              <li className="text-[10px] text-mint">□ confirm acceptance before the reply date</li>
+            </>
+          )}
+        </ul>
+
         {(app.submittedOn || app.decidedOn) && (
-          <p className="mt-1.5 text-[11px] text-dim">
+          <p className="mt-2 text-[11px] text-dim">
             {app.submittedOn && <>submitted {fmt(app.submittedOn)}</>}
             {app.submittedOn && app.decidedOn && " · "}
             {app.decidedOn && <>decided {fmt(app.decidedOn)}</>}
