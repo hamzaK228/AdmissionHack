@@ -1220,3 +1220,27 @@ the order of work.
   profile and portfolio, which sync when signed in. Syncing them is a small follow-up (one `jsonb` column).
 - `/cv` is in the robots disallow list, since it is a personal tool that renders empty for a stranger.
 
+## Sign-in, and the silent signup (2026-10-14)
+
+Two problems the owner found by actually using the product. Both were real, and both were diagnosed from logs
+rather than guessed at.
+
+- **Sign-in was unfindable.** It lived only inside the dashboard's account tab, so a visitor had to already be
+  in the workspace and then guess which of fifteen tabs held it — while joining a class, the board and the
+  essay reviewer all need an account. There is now a **`/signin` page** that explains what an account is *for*
+  before asking for one (sync across devices, counselor access you control, the parts that need a name), and
+  it still says plainly that the workspace works without one. Linked from the header — a pill, shown only when
+  signed out — and from the mobile sheet, `/counselors`, and the board's signed-out panel.
+- **The silent signup, which was the worst thing that form could do.** The edge logs show the attempt exactly:
+  `POST /auth/v1/signup → 200` and `POST /auth/v1/resend → 200`, with **no account created and no email sent**.
+  That is GoTrue's anti-enumeration behaviour for an address that **already has an account** — a success
+  carrying an empty `identities` array, and silence about it. Because the account pool is **shared with the
+  other product**, anyone who signed up there already has an account here, so signing up again does nothing at
+  all, and used to say nothing either. `useAuth` now detects the empty array and the panel says *"that email
+  already has an account — sign in, or use forgot password"*, switching to the sign-in form.
+- **A correction to my own earlier claim.** Last session this file said the email mailer was the blocker. The
+  logs contradict that: users on 9–10 October were confirmed **about a minute after signing up**, so delivery
+  works. The built-in mailer's per-hour limit remains a genuine scaling concern worth fixing before a
+  campaign, but it did not cause this failure, and `docs/launch.md` now says so rather than leaving a wrong
+  diagnosis standing.
+
