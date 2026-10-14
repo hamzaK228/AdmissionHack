@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/components/dashboard/store";
 import { Eyebrow } from "@/components/ui";
@@ -169,6 +170,12 @@ export function WritingCoach() {
               Write it badly first and fix it later. A draft you are embarrassed by is worth more
               than a blank page you are proud of.
             </p>
+            <Link
+              href="/writing"
+              className="mt-4 inline-block text-xs font-bold text-lime/80 transition-colors hover:text-lime"
+            >
+              → read the full Writing School: annotated models, before-and-after rewrites
+            </Link>
           </section>
 
           <section className="rounded-2xl border border-line bg-panel/70 p-6">

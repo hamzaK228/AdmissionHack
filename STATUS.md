@@ -934,3 +934,28 @@ exactly that instead of failing vaguely. Verified: `GET /api/essay-review` → `
 names are ready; pasting the key into `.env.local` and the Vercel production secret is the whole of
 the work, and it needs no redeploy because the route reads the key at request time.
 
+## The Writing School (2026-10-14)
+
+Pillar 3's last substantial content gap: the essay, taught by annotated example rather than described
+in the abstract.
+
+- `src/data/writing-school.ts` and the public `/writing` page. Five sections: what the reader is doing
+  (five constraints, not opinions), the spine that works (a specific moment → what you noticed → what
+  you did → what that says about how you work → why here), **two fully annotated model essays**, three
+  before-and-after rewrites, and the five ways drafts fail — each with a test you can apply to your own
+  draft in a minute.
+- **The models are labelled, and the label is load-bearing.** They carry a provenance note saying they
+  were written for the guide: not a real applicant's essay, and not one that was admitted anywhere.
+  Peddling "the essay that got someone into Harvard" is unfalsifiable, and it is precisely the claim an
+  anxious seventeen-year-old believes hardest. The exam banks already take this line about question
+  provenance; here it matters more, because a model essay is the thing a student is most tempted to copy.
+- **Technique is invisible in a finished essay and obvious in an annotated one**, so each model renders
+  as paragraph-then-note: the text, and beside it what that paragraph is *doing* — why the opening is a
+  bus shelter rather than a childhood dream, why admitting a nine-month reporting error is the strongest
+  sentence available, why "this experience taught me" throws the work away.
+- Wired into the header and footer nav, linked from the dashboard's writing tab so the primer there and
+  the public guide are one tool rather than two opinions, and added to the sitemap.
+- **Fixed while passing through:** `/scholarships` had never been in `sitemap.ts` — the same class of
+  omission as the earlier 85-vs-1,543 bug, a public content hub invisible to crawlers. Added, along
+  with `/writing`.
+
