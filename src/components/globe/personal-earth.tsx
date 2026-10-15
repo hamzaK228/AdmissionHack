@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { animate, createMotionPath } from "animejs";
 import { useReducedMotion } from "motion/react";
 import { useStore } from "@/components/dashboard/store";
@@ -39,6 +39,22 @@ const R = VB * 0.38;
 /** marker card size in viewBox units (the viewBox is 1000 wide, whatever its pixel size) */
 const MARK = 46;
 const HOME_KEY = "ah.home";
+
+/**
+ * The country list, as elements, built once at module scope.
+ *
+ * There are 107 of them, and the globe re-renders on every frame of a drag, so rebuilding
+ * this subtree per frame was a sizeable part of why the drag felt heavy. Reusing the same
+ * element objects lets React skip the `<select>` entirely: an element that is
+ * referentially identical to the previous render has no subtree left to reconcile.
+ */
+const COUNTRY_OPTIONS = Object.keys(COUNTRY_COORDS)
+  .sort()
+  .map((c) => (
+    <option key={c} value={c}>
+      {c}
+    </option>
+  ));
 
 /**
  * Country lookup, normalised.
@@ -168,6 +184,20 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
    * so the observer attaches when the element actually exists.
    */
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
+  /**
+   * The same element, also held in a ref.
+   *
+   * The drag has to paint the canvas on the frame its own gesture produces, and a React
+   * update plus an effect cannot do that: `useEffect` runs after the browser has already
+   * painted, so the sphere would always be one frame — sometimes two — behind the pointer.
+   * A ref lets the frame callback draw immediately, and React keeps owning only the arcs
+   * and markers.
+   */
+  const canvasNode = useRef<HTMLCanvasElement | null>(null);
+  const attachCanvas = useCallback((el: HTMLCanvasElement | null) => {
+    canvasNode.current = el;
+    setCanvasEl(el);
+  }, []);
   const [home, setHome] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [size, setSize] = useState(0);
@@ -292,19 +322,29 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
   /**
    * Turning the planet by hand.
    *
+   * **The view's latitude and longitude are in DEGREES**, which is what `COUNTRY_COORDS`
+   * holds and what `cameraFor` expects. Getting that wrong is what made the first version of
+   * this feel broken rather than merely imprecise: the drag added a per-pixel *radian* rate
+   * to a value measured in degrees, so a 24-pixel step turned the globe 0.14° instead of
+   * 8.4°, and the latitude clamp — written as `1.45`, a radian figure — snapped 48°N down
+   * to 1.45°N on the very first pixel of movement. The globe lurched to the equator and
+   * then crawled.
+   *
    * The rate is chosen so that dragging the globe's own radius turns it about a quarter
-   * turn — fast enough to cross the world in one gesture, slow enough to land on a city.
+   * turn: fast enough to cross the world in one gesture, slow enough to land on a city.
    * Latitude stops short of the poles, where the axis of a longitude rotation degenerates
    * and the globe would start spinning rather than tracking.
    */
-  const RAD_PER_PX = 0.006;
-  const MAX_LAT = 1.45;
+  const DEG_PER_PX = 0.35;
+  const MAX_LAT = 83;
 
   const flush = () => {
     frame.current = 0;
     const next = queued.current;
     if (!next) return;
     queued.current = null;
+    // the sphere first, in this frame; the arcs and markers follow through React
+    if (canvasNode.current) drawGlobe(canvasNode.current, [next.lat, next.lng]);
     setView(next);
   };
 
@@ -336,9 +376,21 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
       (homeCoords ? { lat: homeCoords[0], lng: homeCoords[1] } : null);
     if (!from) return;
 
+    /**
+     * The signs are the whole feel of this, so they are worth stating.
+     *
+     * Screen x rises with a feature's longitude *relative to the camera*, so raising the
+     * camera's longitude slides features to the LEFT. Dragging right has to pull the
+     * surface right, which means the camera's longitude must fall — hence `- dx`. The
+     * same argument on the vertical axis: features north of the camera's latitude sit
+     * above the centre, so the camera's latitude has to rise for the surface to follow a
+     * downward drag — hence `+ dy`. Both were the wrong way round, which is exactly what
+     * "can't move it properly" feels like: the planet turns away from your hand.
+     */
     const next = {
-      lat: Math.max(-MAX_LAT, Math.min(MAX_LAT, from.lat - dy * RAD_PER_PX)),
-      lng: from.lng + dx * RAD_PER_PX,
+      lat: Math.max(-MAX_LAT, Math.min(MAX_LAT, from.lat + dy * DEG_PER_PX)),
+      // wrapped, so a long drag cannot leave the longitude drifting off into the hundreds
+      lng: ((((from.lng - dx * DEG_PER_PX + 180) % 360) + 360) % 360) - 180,
     };
     acc.current = next;
     queued.current = next;
@@ -365,10 +417,11 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
   }, [canvasEl]);
 
   // the globe is drawn to canvas once per (view, size). No frame loop.
+  // While a drag is in flight the gesture paints it itself, on its own frame.
   useEffect(() => {
-    if (!canvasEl || !viewCoords) return;
+    if (!canvasEl || !viewCoords || dragging) return;
     drawGlobe(canvasEl, viewCoords);
-  }, [canvasEl, viewCoords, size]);
+  }, [canvasEl, viewCoords, size, dragging]);
 
   // only the markers move: one anime.js tween per route, along its own arc
   useEffect(() => {
@@ -405,7 +458,6 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
 
   if (!loaded) return <p className="text-sm text-dim">loading…</p>;
 
-  const countries = Object.keys(COUNTRY_COORDS).sort();
   const withLogo = targets.filter((t) => t.logo).length;
   /**
    * Destinations on the far side of the globe — real, just not currently facing us.
@@ -438,11 +490,7 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
             onChange={(e) => choose(e.target.value)}
           >
             <option value="">choose your country…</option>
-            {countries.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
+            {COUNTRY_OPTIONS}
           </select>
         </label>
       </div>
@@ -516,7 +564,7 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
             onPointerCancel={onDragEnd}
             onPointerLeave={onDragEnd}
           >
-          <canvas ref={setCanvasEl} className="absolute inset-0 h-full w-full" aria-hidden />
+          <canvas ref={attachCanvas} className="absolute inset-0 h-full w-full" aria-hidden />
           <svg
             ref={svgRef}
             viewBox={`0 0 ${VB} ${VB}`}
