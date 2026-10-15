@@ -26,7 +26,7 @@ import {
 import { DOC_FOLDERS } from "@/data/document-folders";
 import { CHECKLIST } from "@/data/document-checklist";
 import { universityBySlug } from "@/data/directory";
-import { isOpen, statusOf, statusSpec } from "@/lib/applications";
+import { isOpen, statusOf, statusSpec, stepKey, stepProgress } from "@/lib/applications";
 import { STATUS_TONE } from "@/components/dashboard/college-list";
 
 /** The checklist's own wording, so a counselor reads the same words as the student. */
@@ -64,7 +64,27 @@ function attentionFor(data: SyncPayload, docs: CloudFile[], reports: CloudReport
   const unverified = reports.filter((r) => !r.isVerified).length;
   const translationsOut = Object.values(data.translations ?? {}).filter((t) => t.state !== "received").length;
   const untouched = DOC_FOLDERS.filter((f) => !docs.some((d) => d.folder === f.id));
-  return { open, soon, unverified, translationsOut, untouched };
+
+  /**
+   * The individual steps still unticked, per open application.
+   *
+   * The most actionable thing on this screen. "Three applications still to send" is a fact
+   * a counselor can only ask about; "pay the application fee" is something they can chase.
+   * The steps ride the same checklist the student ticks, so the two screens cannot drift
+   * apart — and it is why the student's card and this panel name the same steps in the
+   * same words.
+   */
+  const checks = data.checklist ?? {};
+  const stepsOut: { uni: string; label: string }[] = [];
+  for (const u of data.universities) {
+    const st = statusOf(u);
+    if (!isOpen(st)) continue;
+    const uni = universityBySlug(u.slug)?.name ?? u.slug.replace(/-/g, " ");
+    for (const step of stepProgress(u.slug, st, checks).steps) {
+      if (!checks[stepKey(u.slug, step.id)]) stepsOut.push({ uni, label: step.label });
+    }
+  }
+  return { open, soon, unverified, translationsOut, untouched, stepsOut };
 }
 
 const inputCls =
@@ -407,6 +427,19 @@ function CounselorRoster() {
                       not in hand yet — worth chasing before an application looks complete on paper.
                     </li>
                   )}
+                  {attention.stepsOut.length > 0 && (
+                    <li className="text-fog">
+                      <span className="font-bold text-paper">
+                        {attention.stepsOut.length} step{attention.stepsOut.length === 1 ? "" : "s"} still unticked
+                      </span>{" "}
+                      — next up:{" "}
+                      {attention.stepsOut
+                        .slice(0, 2)
+                        .map((step) => `${step.uni}: ${step.label}`)
+                        .join(" · ")}
+                      {attention.stepsOut.length > 2 && `, and ${attention.stepsOut.length - 2} more`}
+                    </li>
+                  )}
                   {attention.untouched.length > 0 && (
                     <li className="text-fog">
                       <span className="font-bold text-paper">Folders with nothing in them:</span>{" "}
@@ -417,7 +450,8 @@ function CounselorRoster() {
                     attention.soon.length === 0 &&
                     attention.unverified === 0 &&
                     attention.translationsOut === 0 &&
-                    attention.untouched.length === 0 && (
+                    attention.untouched.length === 0 &&
+                    attention.stepsOut.length === 0 && (
                       <li className="text-fog">
                         Nothing outstanding — every application has been sent, nothing is due in the next{" "}
                         {SOON_DAYS} days, and every report has been checked.
@@ -437,7 +471,11 @@ function CounselorRoster() {
                   const day = (iso: string) =>
                     new Date(iso + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short" });
                   const name = universityBySlug(u.slug)?.name ?? u.slug.replace(/-/g, " ");
-                  const spec = statusSpec(statusOf(u));
+                  const st = statusOf(u);
+                  const spec = statusSpec(st);
+                  const checks = openData.checklist ?? {};
+                  const { steps: uSteps, done: uDone, total: uTotal } = stepProgress(u.slug, st, checks);
+                  const left = uSteps.filter((step) => !checks[stepKey(u.slug, step.id)]);
                   return (
                     <li
                       key={u.slug}
@@ -452,6 +490,19 @@ function CounselorRoster() {
                           {u.submittedOn && u.decidedOn && " · "}
                           {u.decidedOn && <>decided {day(u.decidedOn)}</>}
                         </span>
+                        {/* what is outstanding, in the student's own step wording */}
+                        {left.length > 0 ? (
+                          <span className="mt-0.5 block text-[10px] leading-snug text-amber">
+                            {uDone}/{uTotal} steps · still: {left[0].label}
+                            {left.length > 1 && ` +${left.length - 1}`}
+                          </span>
+                        ) : (
+                          uTotal > 0 && (
+                            <span className="mt-0.5 block text-[10px] leading-snug text-mint">
+                              all {uTotal} steps ticked
+                            </span>
+                          )
+                        )}
                       </span>
                       {/* the student's own status vocabulary, and the same colours their
                           college list uses, so the two screens can be read together */}

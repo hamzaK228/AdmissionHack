@@ -103,6 +103,71 @@ export const isAtLeast = (s: AppStatus, target: AppStatus) => statusRank(s) >= s
 /** Anything the student still has to act on. */
 export const isOpen = (s: AppStatus) => !SPECS[s].settled && s !== "submitted";
 
+/* ── the stages, and the steps inside them ─────────────────────────────────── */
+
+/**
+ * The three stages a student actually experiences, as opposed to the seven statuses.
+ *
+ * The statuses are not a list of equal choices — they are a journey with an outcome at the
+ * end, and a `<select>` of seven lowercase words hid that. Three always-visible stages say
+ * where the application is and where it can go.
+ */
+export const APP_PHASES: { id: AppStatus; label: string; blurb: string }[] = [
+  { id: "planning", label: "deciding", blurb: "checking whether this one is worth applying to" },
+  { id: "preparing", label: "preparing", blurb: "documents, essays, recommendations, fee" },
+  { id: "submitted", label: "sent", blurb: "in, waiting for the decision" },
+];
+
+/** What can happen after it is sent. Shown as its own row, once sending is real. */
+export const APP_OUTCOMES: AppStatus[] = ["waitlisted", "offer", "rejected", "enrolled"];
+
+export interface AppStep {
+  id: string;
+  label: string;
+}
+
+/**
+ * What each stage actually asks of the student.
+ *
+ * These were decorative "□" lines on the card — a checklist you cannot check off, on the
+ * one screen whose entire job is filling things in. Each step is now a real toggle, keyed
+ * `app:<slug>:<step>` in the workspace's existing checklist map, so it persists, it syncs
+ * with everything else, and a counselor reading the workspace sees exactly which steps are
+ * outstanding rather than having to ask.
+ */
+export const APP_STEPS: Partial<Record<AppStatus, AppStep[]>> = {
+  planning: [
+    { id: "requirements", label: "check the program requirements on the official site" },
+    { id: "english", label: "confirm the English-test policy (IELTS / TOEFL / DET)" },
+    { id: "worth", label: "decide whether this one is worth an application" },
+  ],
+  preparing: [
+    { id: "transcript", label: "transcript + diploma (sworn translation if needed)" },
+    { id: "lor", label: "recommendation letters ×2–3" },
+    { id: "essay", label: "personal statement / motivation letter" },
+    { id: "fee", label: "pay the application fee" },
+  ],
+  submitted: [
+    { id: "reports", label: "official score reports sent by the testing body" },
+    { id: "portal", label: "watch the portal for interview or document requests" },
+  ],
+  waitlisted: [{ id: "loci", label: "send a letter of continued interest, if the university allows one" }],
+  offer: [
+    { id: "compare", label: "compare the scholarship offer and the deposit deadline" },
+    { id: "accept", label: "confirm acceptance before the reply date" },
+  ],
+};
+
+/** The checklist key for one step of one application. */
+export const stepKey = (slug: string, id: string) => `app:${slug}:${id}`;
+
+/** How far through this stage's steps the application is. */
+export function stepProgress(slug: string, status: AppStatus, checklist: Record<string, boolean>) {
+  const steps = APP_STEPS[status] ?? [];
+  const done = steps.filter((s) => checklist[stepKey(slug, s.id)]).length;
+  return { steps, done, total: steps.length, allDone: steps.length > 0 && done === steps.length };
+}
+
 export interface TrackedApp {
   slug: string;
   tier: string;

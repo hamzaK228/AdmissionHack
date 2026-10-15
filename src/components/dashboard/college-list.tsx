@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useStore, type AppEntry, type Tier } from "@/components/dashboard/store";
-import { APP_STATUSES, isOpen, statusOf, statusSpec, summarize, type StatusTone } from "@/lib/applications";
+import {
+  APP_OUTCOMES,
+  APP_PHASES,
+  isOpen,
+  statusOf,
+  statusRank,
+  statusSpec,
+  stepKey,
+  stepProgress,
+  summarize,
+  type AppStatus,
+  type StatusTone,
+} from "@/lib/applications";
 import type { SlimUni } from "@/lib/match-engine";
 
 /**
@@ -43,10 +55,15 @@ const fmt = (iso?: string) =>
   iso ? new Date(iso + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : null;
 
 function AppCard({ u, app }: { u: SlimUni; app: AppEntry }) {
-  const { setTier, setStatus, removeApp } = useStore();
+  const { setTier, setStatus, removeApp, checklist, toggleDoc } = useStore();
   const status = statusOf(app);
   const spec = statusSpec(status);
   const needsYou = isOpen(status);
+
+  /** the stage the student is in; an outcome implies the application has been sent */
+  const phase: AppStatus = APP_PHASES.some((p) => p.id === status) ? status : "submitted";
+  const outcome = APP_OUTCOMES.includes(status) ? status : null;
+  const { steps, done, total, allDone } = stepProgress(app.slug, status, checklist);
 
   return (
     <motion.div
@@ -76,7 +93,7 @@ function AppCard({ u, app }: { u: SlimUni; app: AppEntry }) {
 
       {/* move between tiers — full words, and the current one is marked */}
       <div className="mt-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-dim">list</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-dim">which list</span>
         <div className="mt-1 flex flex-wrap gap-1">
           {TIERS.map((t) => {
             const here = app.tier === t.id;
@@ -100,75 +117,128 @@ function AppCard({ u, app }: { u: SlimUni; app: AppEntry }) {
         </div>
       </div>
 
-      {/* where the application stands */}
+      {/**
+       * Where it stands — three stages, not a dropdown of seven states.
+       *
+       * The statuses are a journey with an outcome at the end, and a `<select>` hid that:
+       * you opened it, read seven lowercase words and worked out which one described you.
+       * The stages are always visible, the current one is lit, the ones behind you are
+       * ticked, and the outcomes appear as their own row only once the application has
+       * actually been sent — which is when they become a real question rather than noise.
+       */}
       <div className="mt-3">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-dim" htmlFor={`st-${app.slug}`}>
-          application
-        </label>
-        <select
-          id={`st-${app.slug}`}
-          value={status}
-          onChange={(e) => setStatus(u.slug, e.target.value as (typeof APP_STATUSES)[number])}
-          className={`mt-1 w-full rounded-lg border bg-panel px-2 py-1.5 text-xs outline-none focus:border-lime/60 ${STATUS_TONE[spec.tone].edge} ${STATUS_TONE[spec.tone].text}`}
-        >
-          {APP_STATUSES.map((s) => {
-            const sp = statusSpec(s);
+        <span className="text-[10px] font-bold uppercase tracking-wider text-dim">where it stands</span>
+        <div className="mt-1 grid grid-cols-3 gap-1" role="group" aria-label="application stage">
+          {APP_PHASES.map((ph) => {
+            const here = phase === ph.id && !outcome;
+            const passed = statusRank(ph.id) < statusRank(phase);
+            const tone = STATUS_TONE[statusSpec(ph.id).tone];
             return (
-              <option key={s} value={s}>
-                {sp.short}
-              </option>
+              <button
+                key={ph.id}
+                type="button"
+                aria-pressed={here}
+                title={ph.blurb}
+                onClick={() => setStatus(u.slug, ph.id)}
+                className={`rounded border px-1.5 py-1.5 text-[11px] font-bold transition-colors ${
+                  here
+                    ? `${tone.edge} bg-panel ${tone.text}`
+                    : passed
+                      ? "border-line2 text-fog hover:border-amber/40 hover:text-amber"
+                      : "border-line text-dim hover:border-lime/40 hover:text-lime"
+                }`}
+              >
+                {here ? "● " : passed ? "✓ " : ""}
+                {ph.label}
+              </button>
             );
           })}
-        </select>
+        </div>
+
+        {phase === "submitted" && (
+          <>
+            <span className="mt-2.5 block text-[10px] font-bold uppercase tracking-wider text-dim">
+              how it ended
+            </span>
+            <div className="mt-1 flex flex-wrap gap-1" role="group" aria-label="application outcome">
+              {APP_OUTCOMES.map((o) => {
+                const sp = statusSpec(o);
+                const here = status === o;
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    aria-pressed={here}
+                    onClick={() => setStatus(u.slug, o)}
+                    className={`rounded border px-2 py-1 text-[11px] font-bold transition-colors ${
+                      here
+                        ? `${STATUS_TONE[sp.tone].edge} bg-panel ${STATUS_TONE[sp.tone].text}`
+                        : "border-line text-dim hover:border-lime/40 hover:text-fog"
+                    }`}
+                  >
+                    {sp.short}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         <p className={`mt-2 text-[11px] leading-relaxed ${needsYou ? "text-fog" : "text-dim"}`}>{spec.next}</p>
-
-        {/* tuition hint when we know it */}
-        {u.tuitionMax != null && (
-          <p className="mt-2 text-[11px] text-dim">
-            ≈ ${u.tuitionMin != null ? `${Math.round(u.tuitionMin / 1000)}k` : "—"} –{" "}
-            {Math.round(u.tuitionMax / 1000)}k / yr · {u.countryName}
-          </p>
-        )}
-
-        {/* per-status mini checklist */}
-        <ul className="mt-2 space-y-1">
-          {status === "planning" && (
-            <>
-              <li className="text-[10px] text-fog">□ check program requirements on the official site</li>
-              <li className="text-[10px] text-fog">□ confirm English-test policy (IELTS / TOEFL / DET)</li>
-            </>
-          )}
-          {status === "preparing" && (
-            <>
-              <li className="text-[10px] text-fog">□ transcript + diploma (sworn translation if needed)</li>
-              <li className="text-[10px] text-fog">□ recommendation letters ×2–3</li>
-              <li className="text-[10px] text-fog">□ personal statement / motivation letter</li>
-              <li className="text-[10px] text-fog">□ pay application fee</li>
-            </>
-          )}
-          {status === "submitted" && (
-            <li className="text-[10px] text-fog">□ track portal for interview or document requests</li>
-          )}
-          {status === "waitlisted" && (
-            <li className="text-[10px] text-amber">□ send letter of continued interest (if allowed)</li>
-          )}
-          {status === "offer" && (
-            <>
-              <li className="text-[10px] text-mint">□ compare scholarship and deposit deadline</li>
-              <li className="text-[10px] text-mint">□ confirm acceptance before the reply date</li>
-            </>
-          )}
-        </ul>
-
-        {(app.submittedOn || app.decidedOn) && (
-          <p className="mt-2 text-[11px] text-dim">
-            {app.submittedOn && <>submitted {fmt(app.submittedOn)}</>}
-            {app.submittedOn && app.decidedOn && " · "}
-            {app.decidedOn && <>decided {fmt(app.decidedOn)}</>}
-          </p>
-        )}
       </div>
+
+      {/* The steps for this stage — tickable, and counted. */}
+      {steps.length > 0 && (
+        <div className="mt-3 rounded-lg border border-line bg-panel/60 p-2.5">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-dim">
+              {status === "planning" ? "before you decide" : status === "preparing" ? "what it asks for" : "what is left"}
+            </span>
+            <span className={`shrink-0 text-[10px] font-bold ${allDone ? "text-mint" : "text-fog"}`}>
+              {done}/{total}
+            </span>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {steps.map((st) => {
+              const checked = Boolean(checklist[stepKey(app.slug, st.id)]);
+              return (
+                <li key={st.id}>
+                  <label className="flex cursor-pointer items-start gap-2 text-[11px] leading-snug">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleDoc(stepKey(app.slug, st.id))}
+                      style={{ accentColor: "#c9ff4a" }}
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer"
+                    />
+                    <span className={checked ? "text-dim line-through" : "text-fog"}>{st.label}</span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+          {allDone && phase === "preparing" && (
+            <p className="mt-2 text-[11px] leading-relaxed text-mint">
+              every step is ticked — move it to <span className="font-bold">sent</span> when it is actually in.
+            </p>
+          )}
+        </div>
+      )}
+
+      {u.tuitionMax != null && (
+        <p className="mt-2 text-[11px] text-dim">
+          ≈ ${u.tuitionMin != null ? `${Math.round(u.tuitionMin / 1000)}k` : "—"} –{" "}
+          {Math.round(u.tuitionMax / 1000)}k / yr · {u.countryName}
+        </p>
+      )}
+
+      {(app.submittedOn || app.decidedOn) && (
+        <p className="mt-2 text-[11px] text-dim">
+          {app.submittedOn && <>submitted {fmt(app.submittedOn)}</>}
+          {app.submittedOn && app.decidedOn && " · "}
+          {app.decidedOn && <>decided {fmt(app.decidedOn)}</>}
+        </p>
+      )}
     </motion.div>
   );
 }
