@@ -39,7 +39,7 @@ Do these in this order; that is the order I would pick.
 | # | Step | Why | Status |
 |---|---|---|---|
 | 10 | **CV builder** | The last named gap in the Apply pillar, and the one document every application needs that the app cannot yet produce. Uses portfolio data that already exists. | **built 2026-10-14** |
-| 11 | **Translations workflow** | Today a single tick for "sworn translations"; no way to track which documents need them, from which issuer, in what state. | next |
+| 11 | **Translations workflow** | Today a single tick for "sworn translations"; no way to track which documents need them, from which issuer, in what state. | **built 2026-10-14** — migration 0007 + a tracker in the documents tab, visible to counselors |
 | 12 | **AI advisor** | The reviewer's route and key already work; this is mostly a different prompt and a conversation surface. High student value. | **built 2026-10-14** — reads the workspace on the overview tab |
 | 13 | **Timed mock tests + adaptive sections** | The practice engine has no clock and no scored full-length paper. | later |
 | 14 | **More data: tuition for more universities** | Only 48 of 1,504 carry a tuition range. That caps the arcade deck *and* weakens the match engine's budget reasoning for the other ~1,456. Data entry, not code. | continuous |

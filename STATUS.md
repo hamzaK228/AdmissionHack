@@ -1276,3 +1276,29 @@ Pillar 8, and the one thing the dashboard genuinely could not do: **synthesise.*
   sign_in_required` — as does the reviewer after the refactor, which is what proves the shared gate still
   works.
 
+## The translation tracker — the last feature (2026-10-14)
+
+For an international applicant, most documents are in the wrong language. One checklist tick for
+"sworn/notarised translations" hid the entire problem — which documents, with whom, how far along — and it is
+the step where seasons are lost: a sworn translator takes weeks, and nothing in the file looks wrong until a
+university asks for a translation that does not exist.
+
+- **Migration 0007**: `ah_translations`, keyed `(user_id, doc_key)`, three states (`needed` → `ordered` →
+  `received`) plus a translator and a note. The owner writes; **a linked counselor reads**, because chasing
+  translations is exactly the unglamorous step a counselor exists to notice. Both vocabularies are CHECK
+  constraints, so the UI and the database cannot drift.
+- **It rides the existing workspace sync**, behind a table probe for the same reason the tracker columns have
+  one: the push **deletes before it inserts**, so writing to a table that is not there yet would fail the
+  insert *after* the delete and empty a student's rows silently. A state the app does not recognise is
+  discarded rather than persisted — the same discipline as the application status.
+- **The panel sits in the documents tab, beside the checklist**, because "this document needs a translation"
+  and "this document is ready" are two different answers about the same piece of paper. Its copy adds the
+  thing applicants discover late: some countries require an **apostille or legalisation after** translation,
+  and that cannot be rushed.
+- **Verified against the real API**: anonymous reads return nothing, anonymous writes are refused with
+  `42501`, and SAThack's tables are untouched.
+- **With this, every feature in the plan that can be built without a decision from the owner is built.**
+  What remains is content (more tuition data, more practice questions), the owner's own inputs
+  (`docs/finish-plan.md` Phase 0), and the two items that need a decision first — email reminders need SMTP,
+  and monetisation is dropped.
+
