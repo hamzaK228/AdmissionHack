@@ -5,6 +5,7 @@ import { useReducedMotion } from "motion/react";
 import { globePoints, countryStats, type GlobePoint } from "@/data/geo";
 import { LAND_W, LAND_H, landMask } from "@/data/land-mask";
 import { markFor } from "@/lib/routes";
+import { UNIVERSITY_LOGOS } from "@/data/logos";
 
 interface Props {
   onSelect?: (p: GlobePoint) => void;
@@ -35,22 +36,25 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
   const maxCount = useMemo(() => Math.max(...countries.map((c) => c.count), 1), [countries]);
 
   /**
-   * The trail's marks: the initials of the highest-ranked universities on the globe.
+   * The trail's marks: the highest-ranked universities, with their real mark where we
+   * vendored one.
    *
-   * A small fixed list computed once, so spawning a mark is an array read rather than
-   * a sort — and the trail therefore costs nothing per pointer event beyond pushing an
-   * object onto a bounded ring.
+   * A small fixed list computed once, so spawning a mark is an array read rather than a
+   * sort — and the trail therefore costs nothing per pointer event beyond pushing onto a
+   * bounded ring. Universities without a vendored mark (six of them: Oxford, UCL,
+   * Columbia, Penn, Caltech, NUS) fall back to initials, which is also what happens if a
+   * logo fails to decode.
    */
   const trailMarks = useMemo(() => {
     const sorted = [...points].sort((a, b) => a.rank - b.rank);
     const seen = new Set<string>();
-    const out: string[] = [];
+    const out: { mark: string; src?: string }[] = [];
     for (const p of sorted) {
-      const m = markFor(p.name);
-      if (seen.has(m)) continue;
-      seen.add(m);
-      out.push(m);
-      if (out.length >= 14) break;
+      const mark = markFor(p.name);
+      if (seen.has(mark)) continue;
+      seen.add(mark);
+      out.push({ mark, src: UNIVERSITY_LOGOS[p.name] });
+      if (out.length >= 16) break;
     }
     return out;
   }, [points]);
@@ -64,8 +68,18 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
    * waves the mouse; and entries are compacted **in place** each frame rather than
    * rebuilt, so a frame allocates nothing.
    */
-  const trailRef = useRef<{ x: number; y: number; mark: string; born: number }[]>([]);
+  const trailRef = useRef<{ x: number; y: number; mark: string; src?: string; born: number }[]>([]);
   const trailTickRef = useRef(0);
+
+  /**
+   * University marks, fetched at most once each and only once the pointer is actually
+   * over the globe.
+   *
+   * Lazy on purpose: a landing page should not pull 200 KB of logos for a visitor who
+   * never touches it, and a trail that re-requested an image per mark would be a network
+   * call every few pixels. Loaded images are reused from this map for the life of the page.
+   */
+  const logosRef = useRef(new Map<string, HTMLImageElement>());
 
   // land dots as earth-space unit vectors — computed once, rotated per frame
   const landVectors = useMemo(() => {
@@ -143,6 +157,27 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(wrap);
+
+    /**
+     * A loaded mark, or null while it is still arriving.
+     *
+     * Returning null rather than awaiting is deliberate: the trail must never stall on the
+     * network. A mark whose logo has not landed yet draws as its initials, and the next
+     * frame it appears — so the effect is available instantly and improves as the images
+     * arrive, instead of being blank until they do.
+     */
+    const logoFor = (src?: string): HTMLImageElement | null => {
+      if (!src) return null;
+      const cache = logosRef.current;
+      let img = cache.get(src);
+      if (!img) {
+        img = new Image();
+        img.decoding = "async";
+        img.src = src;
+        cache.set(src, img);
+      }
+      return img.complete && img.naturalWidth > 0 ? img : null;
+    };
 
     const draw = () => {
       const { w, h } = size;
@@ -339,20 +374,42 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
           const alpha = fade * fade;
           const radius = 12 + (1 - fade) * 6;
 
-          ctx.globalAlpha = alpha * 0.85;
-          ctx.beginPath();
-          ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(4,7,6,0.9)";
-          ctx.fill();
-          ctx.strokeStyle = "rgba(201,255,74," + alpha * 0.7 + ")";
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          const logo = logoFor(t.src);
+          if (logo) {
+            // the university's own mark on a white card — the reference's card language,
+            // and white is what makes a dark-badged logo (Harvard crimson, ETH black)
+            // legible against a near-black globe
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255,255,255," + alpha * 0.95 + ")";
+            ctx.fill();
+            ctx.clip();
+            const side = radius * 1.5;
+            ctx.drawImage(logo, t.x - side / 2, t.y - side / 2, side, side);
+            ctx.restore();
 
-          ctx.fillStyle = "rgba(201,255,74," + alpha + ")";
-          ctx.font = "bold 9px ui-monospace, SFMono-Regular, monospace";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(t.mark, t.x, t.y + 0.5);
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(201,255,74," + alpha * 0.65 + ")";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          } else {
+            ctx.globalAlpha = alpha * 0.85;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(4,7,6,0.9)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(201,255,74," + alpha * 0.7 + ")";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = "rgba(201,255,74," + alpha + ")";
+            ctx.font = "bold 9px ui-monospace, SFMono-Regular, monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(t.mark, t.x, t.y + 0.5);
+          }
         }
         trail.length = kept;
         ctx.globalAlpha = 1;
@@ -443,12 +500,8 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
           const last = trail.length > 0 ? trail[trail.length - 1] : null;
           // spaced by travel, so a slow drift does not pile marks on one spot
           if (!last || Math.hypot(lx - last.x, ly - last.y) > TRAIL_STEP) {
-            trail.push({
-              x: lx,
-              y: ly,
-              mark: trailMarks[trailTickRef.current++ % trailMarks.length],
-              born: performance.now(),
-            });
+            const pick = trailMarks[trailTickRef.current++ % trailMarks.length];
+            trail.push({ x: lx, y: ly, mark: pick.mark, src: pick.src, born: performance.now() });
             if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
           }
         }
