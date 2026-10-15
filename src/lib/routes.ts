@@ -86,10 +86,37 @@ export interface Route extends RouteInput {
 const STEPS = 48;
 const LIFT = 0.14;
 
-/** Initials for the travelling marker. Cheap, and honest: it is not a logo. */
+/**
+ * A short mark for a university: "MIT", "ETH", "TUM", "RWTH".
+ *
+ * Initials rather than a logo, deliberately — university marks are third-party
+ * trademarks and drawing approximations of them would be dishonest as well as a
+ * liability. The rules, in order, are chosen so the common cases come out the way a
+ * person would write them:
+ *
+ *   1. **A parenthetical abbreviation wins**, because our own data carries the
+ *      institution's preferred short form — "(MIT)", "(UCB)", "(LSE)".
+ *   2. **An all-caps word wins**, because that is already an acronym: "ETH Zurich"
+ *      is ETH, not EZ, and "RWTH Aachen" is RWTH.
+ *   3. Otherwise the initials of the capitalised words, up to three: "Technical
+ *      University of Munich" is TUM, which is what it calls itself.
+ */
+const GENERIC = /^(of|and|the|at|in|de|di|van|von)$/i;
+
 export function markFor(name: string): string {
-  const words = name.replace(/\(.*?\)/g, "").split(/[\s,]+/).filter(Boolean);
-  const caps = words.filter((w) => /^[A-Z]/.test(w) && w.length > 1);
+  const paren = /\(([A-Za-z]{2,6})\)/.exec(name);
+  if (paren) return paren[1].toUpperCase();
+
+  const words = name
+    .replace(/[^\p{L}\s,()-]/gu, " ")
+    .split(/[\s,()]+/)
+    .filter((w) => w.length > 1 && !GENERIC.test(w))
+    .map((w) => w.replace(/-/g, ""));
+
+  const acronym = words.find((w) => w.length >= 2 && w === w.toUpperCase());
+  if (acronym) return acronym;
+
+  const caps = words.filter((w) => /^\p{Lu}/u.test(w));
   if (caps.length >= 2) return caps.slice(0, 3).map((w) => w[0]).join("").toUpperCase();
   return (caps[0] ?? words[0] ?? "?").slice(0, 4).toUpperCase();
 }

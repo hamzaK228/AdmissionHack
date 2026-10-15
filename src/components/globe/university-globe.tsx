@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { globePoints, countryStats, type GlobePoint } from "@/data/geo";
 import { LAND_W, LAND_H, landMask } from "@/data/land-mask";
+import { markFor } from "@/lib/routes";
 
 interface Props {
   onSelect?: (p: GlobePoint) => void;
@@ -12,6 +13,12 @@ interface Props {
 }
 
 const DEG = Math.PI / 180;
+
+/** The trail: how many marks may exist at once, and how long each lives. */
+const TRAIL_MAX = 9;
+const TRAIL_LIFE = 1200;
+/** How far the pointer must travel before the next mark appears. */
+const TRAIL_STEP = 24;
 
 /**
  * Pointillist planet — continents drawn from a published land mask (Natural
@@ -26,6 +33,39 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
   const points = useMemo(() => globePoints(), []);
   const countries = useMemo(() => countryStats(), []);
   const maxCount = useMemo(() => Math.max(...countries.map((c) => c.count), 1), [countries]);
+
+  /**
+   * The trail's marks: the initials of the highest-ranked universities on the globe.
+   *
+   * A small fixed list computed once, so spawning a mark is an array read rather than
+   * a sort — and the trail therefore costs nothing per pointer event beyond pushing an
+   * object onto a bounded ring.
+   */
+  const trailMarks = useMemo(() => {
+    const sorted = [...points].sort((a, b) => a.rank - b.rank);
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const p of sorted) {
+      const m = markFor(p.name);
+      if (seen.has(m)) continue;
+      seen.add(m);
+      out.push(m);
+      if (out.length >= 14) break;
+    }
+    return out;
+  }, [points]);
+
+  /**
+   * The trail buffer, bounded and reused.
+   *
+   * This is the whole performance story of the effect: **no DOM**, so nothing is
+   * created or destroyed as the pointer moves and React never re-renders; a **fixed
+   * ceiling** of nine marks, so memory cannot grow with how enthusiastically somebody
+   * waves the mouse; and entries are compacted **in place** each frame rather than
+   * rebuilt, so a frame allocates nothing.
+   */
+  const trailRef = useRef<{ x: number; y: number; mark: string; born: number }[]>([]);
+  const trailTickRef = useRef(0);
 
   // land dots as earth-space unit vectors — computed once, rotated per frame
   const landVectors = useMemo(() => {
@@ -276,6 +316,47 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
         ctx.rotate(-o.rot);
       }
       ctx.restore();
+
+      /**
+       * The trail, drawn into this same canvas on this same frame.
+       *
+       * Canvas rather than DOM on purpose: no element is created or destroyed as the
+       * pointer moves, React never re-renders, nothing is laid out, and there is no
+       * second animation loop. The buffer is compacted **in place** so a busy frame
+       * allocates nothing, and it is capped, so waving the mouse hard cannot grow it.
+       */
+      const trail = trailRef.current;
+      if (trail.length > 0) {
+        const now = performance.now();
+        let kept = 0;
+        for (let i = 0; i < trail.length; i++) {
+          const t = trail[i];
+          const age = (now - t.born) / TRAIL_LIFE;
+          if (age >= 1) continue;
+          trail[kept++] = t;
+
+          const fade = 1 - age;
+          const alpha = fade * fade;
+          const radius = 12 + (1 - fade) * 6;
+
+          ctx.globalAlpha = alpha * 0.85;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(4,7,6,0.9)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(201,255,74," + alpha * 0.7 + ")";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = "rgba(201,255,74," + alpha + ")";
+          ctx.font = "bold 9px ui-monospace, SFMono-Regular, monospace";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(t.mark, t.x, t.y + 0.5);
+        }
+        trail.length = kept;
+        ctx.globalAlpha = 1;
+      }
     };
 
     const loop = () => {
@@ -342,6 +423,36 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
           spinRef.current = 1;
           return;
         }
+
+        /**
+         * Spawn a trail mark, but only over the earth itself — the request was for it on
+         * the globe, not across the whole panel, so the test is the disc's radius rather
+         * than the wrapper's bounds. Also skipped while dragging (that gesture spins the
+         * globe) and entirely under reduced motion.
+         */
+        const rect = wrapRef.current!.getBoundingClientRect();
+        const lx = e.clientX - rect.left;
+        const ly = e.clientY - rect.top;
+        const Rc = Math.min(rect.width * 0.4, rect.height * 0.44);
+        if (
+          !reduce &&
+          trailMarks.length > 0 &&
+          Math.hypot(lx - rect.width / 2, ly - rect.height / 2) <= Rc * 1.02
+        ) {
+          const trail = trailRef.current;
+          const last = trail.length > 0 ? trail[trail.length - 1] : null;
+          // spaced by travel, so a slow drift does not pile marks on one spot
+          if (!last || Math.hypot(lx - last.x, ly - last.y) > TRAIL_STEP) {
+            trail.push({
+              x: lx,
+              y: ly,
+              mark: trailMarks[trailTickRef.current++ % trailMarks.length],
+              born: performance.now(),
+            });
+            if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
+          }
+        }
+
         const hit = pick(e.clientX, e.clientY);
         hoverRef.current = hit;
         spinRef.current = hit ? 1 : 0;
