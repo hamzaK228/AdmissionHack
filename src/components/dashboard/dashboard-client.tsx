@@ -24,6 +24,7 @@ import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
 import { DocumentFolders } from "@/components/dashboard/document-folders";
 import { DeadlineCount } from "@/components/dashboard/deadline-count";
+import { DeadlineTimeline } from "@/components/dashboard/deadline-timeline";
 import { StudentAtlas, type AtlasSnapshot } from "@/components/dashboard/student-atlas";
 import { countries } from "@/data/countries";
 import { useAuth } from "@/lib/use-auth";
@@ -807,6 +808,7 @@ export function DashboardClient({
         )}
         {tab === "deadlines" && (
           <div className="max-w-3xl">
+            {deadlines.length > 1 && <DeadlineTimeline deadlines={deadlines.map((d) => ({ title: d.title, date: d.date }))} />}
             {nextDeadline && (
               <p className="text-sm text-fog">
                 next: <span className="font-bold text-paper">{nextDeadline.title}</span> in{" "}
