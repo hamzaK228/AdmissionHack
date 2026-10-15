@@ -26,12 +26,20 @@ import {
 import { DOC_FOLDERS } from "@/data/document-folders";
 import { CHECKLIST } from "@/data/document-checklist";
 import { universityBySlug } from "@/data/directory";
-import { isOpen, statusOf, statusSpec, stepKey, stepProgress } from "@/lib/applications";
+import { isOpen, statusOf, statusRank, statusSpec, stepKey, stepProgress } from "@/lib/applications";
 import { STATUS_TONE } from "@/components/dashboard/college-list";
 
 /** The checklist's own wording, so a counselor reads the same words as the student. */
 const docLabel = (key: string) =>
   CHECKLIST.find((c) => c.id === key)?.label.replace(/\s*\(.*\)$/, "") ?? key;
+
+/** 2026-10-21 → 21 Oct 2026. An ISO string is how it is stored, not how it is read. */
+const prettyDate = (iso: string) =>
+  new Date(iso + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+
+/** Days from today, so "is this soon?" is a glance rather than arithmetic. */
+const daysAway = (iso: string) =>
+  Math.round((new Date(iso + "T00:00:00").getTime() - Date.now()) / 86_400_000);
 
 /** The student's own tier names, so nobody has to translate "dream" in their head. */
 const TIER_LABEL: Record<string, string> = { dream: "Dream", target: "Target", safe: "Safe" };
@@ -86,6 +94,18 @@ function attentionFor(data: SyncPayload, docs: CloudFile[], reports: CloudReport
   }
   return { open, soon, unverified, translationsOut, untouched, stepsOut };
 }
+
+/**
+ * Reading order for a student's applications: **what needs chasing, first**.
+ *
+ * An application still being worked on outranks one already sent, which outranks one
+ * already decided. Storage order is the order the student happened to add them in, which
+ * tells a counselor nothing about where to look.
+ */
+const chaseOrder = (u: { status?: unknown }) => {
+  const st = statusOf(u);
+  return isOpen(st) ? statusRank(st) : 100 + statusRank(st);
+};
 
 const inputCls =
   "w-full rounded-lg border border-line bg-ink px-3.5 py-2.5 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-lime/60";
@@ -304,17 +324,21 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
 
   const attention = openData ? attentionFor(openData, docs, reports) : null;
 
+  /**
+   * Sorted for reading rather than for storage.
+   *
+   * The workspace is read top to bottom by someone deciding what to chase, so the order is
+   * part of the point: the next deadline above the one after it, an unchecked score report
+   * above a verified one, and the applications in `chaseOrder`.
+   */
+  const unis = openData ? [...openData.universities].sort((a, b) => chaseOrder(a) - chaseOrder(b)) : [];
+  const deadlines = openData ? [...openData.deadlines].sort((a, b) => a.date.localeCompare(b.date)) : [];
+  const reportsSorted = [...reports].sort((a, b) => Number(a.isVerified) - Number(b.isVerified));
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(260px,0.85fr)_1.4fr]">
       {/* groups, then invite + roster */}
       <div>
-        {/* a class is a cohort tool — a parent has one child, not a roster to manage */}
-        {mode === "counselor" && (
-          <>
-            <CounselorGroups onOpenStudent={openStudent} />
-            <hr className="my-10 border-line" />
-          </>
-        )}
         <Eyebrow>{mode === "parent" ? "ask your child to share" : "invite a student"}</Eyebrow>
         {mode === "parent" && (
           <p className="mt-3 text-sm leading-relaxed text-fog">
@@ -369,10 +393,12 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
                 onClick={() => {
                   if (s.studentId) openStudent(s.studentId);
                 }}
-                className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
-                  s.status === "active"
-                    ? "border-line bg-panel/70 hover:border-lime/50"
-                    : "border-line/60 bg-panel/30"
+                className={`w-full rounded-xl border px-4 py-3.5 text-left transition-colors ${
+                  open === s.studentId
+                    ? "border-lime/60 bg-lime/[0.06]"
+                    : s.status === "active"
+                      ? "border-line bg-panel/70 hover:border-lime/50"
+                      : "border-line/60 bg-panel/30"
                 }`}
               >
                 <span className="flex items-center justify-between gap-3">
@@ -396,6 +422,20 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
             </li>
           ))}
         </ul>
+
+        {/* The class guide is the first thing a counselor used to meet — four paragraphs of
+            instruction above the students they came to look at. It is genuinely useful, so
+            it is folded away rather than deleted, and the roster leads. */}
+        {mode === "counselor" && (
+          <details className="mt-8 rounded-2xl border border-line bg-panel/50 p-4">
+            <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wider text-dim">
+              how a class works
+            </summary>
+            <div className="mt-4">
+              <CounselorGroups onOpenStudent={openStudent} />
+            </div>
+          </details>
+        )}
       </div>
 
       {/* the selected student's workspace, read-only */}
@@ -410,7 +450,7 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
         )}
         {open && !openData && <p className="mt-4 text-sm text-dim">loading…</p>}
         {open && openData && (
-          <div className="mt-4 space-y-5">
+          <div className="mt-4 space-y-4">
             <div className="rounded-2xl border border-line bg-panel/70 p-5">
               <p className="text-lg font-bold text-paper">
                 {openData.profile?.full_name || "unnamed applicant"}
@@ -507,13 +547,16 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
               </div>
             )}
 
-            <section>
-              <Eyebrow>universities · {openData.universities.length}</Eyebrow>
+            <section className="rounded-2xl border border-line bg-panel/70 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <Eyebrow>universities</Eyebrow>
+                <span className="text-[11px] font-bold text-dim">{openData.universities.length}</span>
+              </div>
               <ul className="mt-3 space-y-1.5">
                 {openData.universities.length === 0 && (
                   <li className="text-sm text-dim">none shortlisted</li>
                 )}
-                {openData.universities.map((u) => {
+                {unis.map((u) => {
                   const day = (iso: string) =>
                     new Date(iso + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short" });
                   const name = universityBySlug(u.slug)?.name ?? u.slug.replace(/-/g, " ");
@@ -561,8 +604,11 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
               </ul>
             </section>
 
-            <section>
-              <Eyebrow>scores · {Object.keys(openData.exams).length}</Eyebrow>
+            <section className="rounded-2xl border border-line bg-panel/70 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <Eyebrow>scores</Eyebrow>
+                <span className="text-[11px] font-bold text-dim">{Object.keys(openData.exams).length}</span>
+              </div>
               <ul className="mt-3 space-y-1.5">
                 {Object.entries(openData.exams).length === 0 && (
                   <li className="text-sm text-dim">none recorded</li>
@@ -585,8 +631,11 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
               </ul>
             </section>
 
-            <section>
-              <Eyebrow>translations · {Object.keys(openData.translations ?? {}).length}</Eyebrow>
+            <section className="rounded-2xl border border-line bg-panel/70 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <Eyebrow>translations</Eyebrow>
+                <span className="text-[11px] font-bold text-dim">{Object.keys(openData.translations ?? {}).length}</span>
+              </div>
               {Object.keys(openData.translations ?? {}).length === 0 ? (
                 <p className="mt-3 text-sm text-dim">
                   nothing tracked — sworn translations are only needed when a document is not in the language
@@ -628,8 +677,11 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
               </p>
             </section>
 
-            <section>
-              <Eyebrow>portfolio · {openData.portfolio.length}</Eyebrow>
+            <section className="rounded-2xl border border-line bg-panel/70 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <Eyebrow>portfolio</Eyebrow>
+                <span className="text-[11px] font-bold text-dim">{openData.portfolio.length}</span>
+              </div>
               <ul className="mt-3 space-y-2">
                 {openData.portfolio.length === 0 && (
                   <li className="text-sm text-dim">
@@ -666,25 +718,44 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
               )}
             </section>
 
-            <section>
-              <Eyebrow>deadlines · {openData.deadlines.length}</Eyebrow>
+            <section className="rounded-2xl border border-line bg-panel/70 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <Eyebrow>deadlines</Eyebrow>
+                <span className="text-[11px] font-bold text-dim">{openData.deadlines.length}</span>
+              </div>
               <ul className="mt-3 space-y-1.5">
                 {openData.deadlines.length === 0 && (
                   <li className="text-sm text-dim">none tracked</li>
                 )}
-                {openData.deadlines.map((d, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between rounded-lg border border-line bg-ink px-3 py-2 text-xs"
-                  >
-                    <span className="truncate text-fog">{d.title}</span>
-                    <span className="ml-3 shrink-0 text-paper">{d.date}</span>
-                  </li>
-                ))}
+                {deadlines.map((d) => {
+                  const days = daysAway(d.date);
+                  // a date that has passed says so, rather than showing a bare date and
+                  // leaving the reader to work out that it is behind them
+                  const soon = days >= 0 && days <= 7;
+                  return (
+                    <li
+                      key={d.title}
+                      className={`flex items-center justify-between gap-3 rounded-lg border bg-ink px-3 py-2 text-xs ${
+                        soon ? "border-amber/40" : "border-line"
+                      }`}
+                    >
+                      <span className="min-w-0 truncate text-fog">{d.title}</span>
+                      <span className="shrink-0 text-right">
+                        <span className={soon ? "text-amber" : "text-paper"}>{prettyDate(d.date)}</span>
+                        <span className={`ml-2 ${soon ? "text-amber" : "text-dim"}`}>
+                          {days < 0 ? `${-days}d ago` : days === 0 ? "today" : `in ${days}d`}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
-            <section>
-              <Eyebrow>documents · {docs.length}</Eyebrow>
+            <section className="rounded-2xl border border-line bg-panel/70 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <Eyebrow>documents</Eyebrow>
+                <span className="text-[11px] font-bold text-dim">{docs.length}</span>
+              </div>
               <ul className="mt-3 space-y-3">
                 {docs.length === 0 && (
                   <li className="text-sm text-dim">
@@ -722,15 +793,18 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
               </ul>
             </section>
 
-            <section>
-              <Eyebrow>official reports · {reports.length}</Eyebrow>
+            <section className="rounded-2xl border border-line bg-panel/70 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <Eyebrow>official reports</Eyebrow>
+                <span className="text-[11px] font-bold text-dim">{reports.length}</span>
+              </div>
               <ul className="mt-3 space-y-1.5">
                 {reports.length === 0 && (
                   <li className="text-sm text-dim">
                     nothing uploaded — the scores above are unverified.
                   </li>
                 )}
-                {reports.map((r) => (
+                {reportsSorted.map((r) => (
                   <li
                     key={r.id}
                     className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-ink px-3 py-2"
