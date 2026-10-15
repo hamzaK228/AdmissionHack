@@ -1388,3 +1388,47 @@ reference's idea; **the third element is ours.**
   which is where the shortlist button lives — so this was checked on the page that actually carries the
   control, not just the one that was convenient.
 
+## Your own earth (2026-10-15)
+
+The owner's idea: once a student has chosen their universities, give them an earth where they see those
+universities and **the paths to them from their own location**. Built with anime.js `createMotionPath` as they
+asked — and the API was read from the **installed package**, not the docs site, which is JS-rendered and returns
+only the marketing shell (a lesson already recorded in this file from an earlier round).
+
+- **`src/lib/routes.ts`** — pure geometry, no framework and no DOM. An orthographic projection **centred on the
+  student's own location**, so the person reading it is always in the middle of the map: a globe centred on the
+  prime meridian would put a Kazakhstani student's home near the edge and half their list behind the sphere.
+  Arcs interpolate along the **great circle** (slerp on unit vectors) and lift at the midpoint, which is what
+  makes a line between two dots read as a flight path rather than a chord.
+- **21 assertions written before any UI was built on it.** The ones that earned their place: the view basis is
+  orthonormal, home projects exactly to the centre at depth 1, **an antipode is not drawn at all**, and **a
+  far-side arc is truncated rather than drawn through the sphere** — the naive version cuts a straight line
+  across the globe, which reads as a bug rather than as depth.
+- **`createMotionPath` drives the travelling signal**, one tween per arc, with the arc geometry static. This is
+  also the answer to the owner's performance constraint: **there is no animation-frame loop in this component.**
+  The globe is drawn to canvas *once* per (home, size) — a rotating globe costs a frame loop forever, this costs
+  about eight tweens. The land is one batched `Path2D`.
+- **Markers are the university's initials, not its logo.** Those are third-party trademarks, and drawing
+  approximations of them would be dishonest as well as a liability — the reference's "logos in the trail" is the
+  one part of that idea worth deliberately not copying.
+- **A trap found while wiring:** `COUNTRY_COORDS` is keyed `"China (Mainland)"` while a university carries
+  `"China"`, so a direct lookup **silently dropped every Chinese destination** with no error to chase. The table
+  is now folded so a name and its parenthetical-stripped form both resolve.
+- The home location is **browser-local for now**, and the page says so — the same honest limit the CV builder
+  carries. Syncing it is one column away.
+- Verified: `tsc` clean, build clean, `/dashboard` 200, and the new tab label and copy present in the deployed
+  chunks. **Not verified: how it looks** — a projected canvas and an animated arc are visual judgements, and the
+  owner has the reference to compare against.
+
+## Still to do: the cursor trail on the landing globe (2026-10-15)
+
+The owner also asked for the reference's `react-cursor-trail` effect on the landing globe, with **little
+university marks instead of images**, and explicitly asked that it stay light on the user's machine.
+
+**Not built yet, deliberately.** The approach is settled: a **fixed pool** of about eight chips created once and
+repositioned from a ring buffer, active only while the pointer is over the globe (`pointerenter`/`leave`), with
+no DOM creation per pointer event and no per-frame allocation; the marks are university **initials**, for the
+trademark reason above. That is a contained job — but it modifies the hero, which is the one surface where a
+mistake is most visible and least verifiable without eyes, so it deserves its own pass rather than being bolted
+on at the end of a long session.
+
