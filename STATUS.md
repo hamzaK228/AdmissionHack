@@ -1361,6 +1361,30 @@ turns a decorative cursor into an actual bug.
 
 **Verified:** `tsc` and the build clean, home page 200, and both changes present in the deployed bundle
 (`data-custom-cursor`, and the limb gradient's `rgba(3,5,4,0.9)`). **Not verified: how it looks.** A canvas
-rendering and a cursor's feel are visual judgements, and the owner holds the reference to compare against —
-so this needs their eye rather than my assertion.
+  rendering and a cursor's feel are visual judgements, and the owner holds the reference to compare against —
+  so this needs their eye rather than my assertion.
+
+## The cursor learns to speak (2026-10-15)
+
+The owner asked for a cursor animation that "connects with admission". The dot and the trailing ring are the
+reference's idea; **the third element is ours.**
+
+- **Over anything interactive, a small terminal pill types out the verb**: `> open` on a link, `> run` on a
+  button, `> type` in a field, `> choose` on a select, `> expand` on a disclosure. The product is a terminal,
+  so the cursor speaks terminal verbs — and a student learns the vocabulary by moving the mouse, which is a
+  pleasanter way to find it than a legend.
+- **Any element can name its own verb** with `data-cursor="…"`, which is how a control says something more
+  precise than its tag implies. The shortlist toggle is the first: `add to list` / `remove from list`, because
+  "run" would be technically true and completely uninformative.
+- **The typing is real rather than a fade** — characters reveal at 26 ms apiece, with a blinking caret reusing
+  the existing `anim-blink`. The pill sits `+18/+16` from the pointer, so it can never cover the thing it is
+  describing.
+- The three limits from the first pass stand: **off** inside the app routes, **off** on touch and under reduced
+  motion, and `pointer-events: none` everywhere so it can never swallow a click.
+- **A type error `tsc` caught on the way:** `style.opacity` is typed as `string`, and the rewrite passed
+  numbers — the kind of mistake that would have silently pinned the ring visible forever.
+- Verified in the **deployed bundles**: the verb map (`choose`, `expand`), the `custom-cursor` dataset and
+  `data-cursor` support on the home page, and `add to list` / `remove from list` in the directory's chunks,
+  which is where the shortlist button lives — so this was checked on the page that actually carries the
+  control, not just the one that was convenient.
 
