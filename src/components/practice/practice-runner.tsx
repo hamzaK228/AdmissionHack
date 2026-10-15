@@ -36,6 +36,8 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
   const [elapsed, setElapsed] = useState(0);
   const [retryOf, setRetryOf] = useState<string[] | null>(null);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
+  /** opt-in: rehearse the real thing, where the clock does run out */
+  const [timed, setTimed] = useState(false);
 
   const current: Question | undefined = byId.get(order[index] ?? "");
 
@@ -44,6 +46,16 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
     const t = window.setInterval(() => setElapsed(Math.round((Date.now() - startedAt) / 1000)), 1000);
     return () => window.clearInterval(t);
   }, [phase, startedAt]);
+
+  /**
+   * The suggested time for the whole bank, in seconds, but only when timed mode is on.
+   *
+   * The default is still to count up and never cut anybody off — a practice run is for learning,
+   * and being stopped mid-question teaches nothing. Timed mode exists because the real test does
+   * run out, and a student who has never felt that is unprepared for it; the choice is the
+   * student's, made before they start rather than sprung on them.
+   */
+  const limitSec = timed ? (bank?.set.minutes ?? 0) * 60 || null : null;
 
   const start = useCallback(
     (only?: string[]) => {
@@ -76,6 +88,12 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
     },
     [order, byId, bank, examId, examName, startedAt],
   );
+
+  // hand it in when the clock runs out, the way the real paper would
+  useEffect(() => {
+    if (phase !== "running" || !limitSec) return;
+    if (elapsed >= limitSec) finish(answers);
+  }, [phase, limitSec, elapsed, answers, finish]);
 
   const advance = useCallback(() => {
     if (index + 1 < order.length) {
@@ -115,6 +133,7 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
   /* ── intro ─────────────────────────────────────────────────────────────── */
   if (phase === "intro") {
     const sections = sectionsFor(bank);
+    const totalMins = bank.set.minutes;
     return (
       <div className="mx-auto max-w-2xl">
         <Eyebrow>{examName} practice</Eyebrow>
@@ -122,6 +141,29 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
           {bank.set.name}
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-fog">{bank.set.blurb}</p>
+
+        {totalMins > 0 && (
+          <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-panel/70 p-4">
+            <input
+              type="checkbox"
+              checked={timed}
+              onChange={(e) => setTimed(e.target.checked)}
+              style={{ accentColor: "#c9ff4a" }}
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer"
+            />
+            <span>
+              <span className="block text-sm font-bold text-paper">
+                timed mode — {totalMins} minutes
+              </span>
+              <span className="mt-1 block text-xs leading-relaxed text-fog">
+                Off by default: the clock counts up and never cuts you off, because a practice run is
+                for learning and being stopped mid-question teaches nothing. Turn this on to rehearse
+                the real thing — the paper closes itself when the suggested time runs out, the way the
+                real one would.
+              </span>
+            </span>
+          </label>
+        )}
 
         <ul className="mt-6 space-y-2">
           {sections.map((s) => (
@@ -143,7 +185,10 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
           >
             start — {questions.length} questions
           </button>
-          <span className="text-xs text-dim">suggested: {bank.set.minutes} min · the clock counts up</span>
+          <span className="text-xs text-dim">
+            suggested: {bank.set.minutes} min ·{" "}
+            {timed ? "the clock counts down" : "the clock counts up, and never stops you"}
+          </span>
         </div>
 
         <p className="mt-8 rounded-xl border border-line2 bg-panel/40 p-4 text-xs leading-relaxed text-dim">
@@ -185,7 +230,13 @@ export function PracticeRunner({ examId, examName }: { examId: string; examName:
           <span className="text-xs font-bold uppercase tracking-[0.18em] text-dim">
             {current.section} · {current.skill}
           </span>
-          <span className="font-mono text-xs tabular-nums text-fog">{formatClock(elapsed)}</span>
+          <span
+            className={`font-mono text-xs tabular-nums ${
+              limitSec && limitSec - elapsed <= 60 ? "font-bold text-red" : "text-fog"
+            }`}
+          >
+            {limitSec ? `${formatClock(Math.max(0, limitSec - elapsed))} left` : formatClock(elapsed)}
+          </span>
         </div>
 
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">

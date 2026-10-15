@@ -243,6 +243,28 @@ body {
   .row-in { animation: none; }
 }
 
+/**
+ * The application pack, and printing in general.
+ *
+ * The sheet is rendered white on screen (`.pack-sheet`) the way the CV builder does it, so there
+ * is nothing to invert at print time. What is left is the page chrome: the header, the cursor,
+ * the aurora and the toolbar all have `print:hidden`, and this sets the paper margin and stops
+ * the browser repeating the dark body background on every sheet.
+ */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .aurora,
+  [data-custom-cursor] > * {
+    display: none !important;
+  }
+}
+
+@page {
+  margin: 14mm;
+}
+
 @keyframes growX {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }

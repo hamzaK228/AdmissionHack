@@ -530,6 +530,20 @@ function OverviewTab({ uniIndex, onGo }: { uniIndex: Record<string, SlimUni>; on
         </button>
       </div>
 
+      {apps.length > 0 && (
+        <div className="rounded-2xl border border-line bg-panel/70 p-5">
+          <Eyebrow>take it with you</Eyebrow>
+          <p className="read mt-3">
+            The application pack prints the whole workspace on one sheet — every application and where
+            it stands, what is still outstanding, your scores, dates, the document checklist and the
+            portfolio. For a counselor meeting, or to keep on paper while you work.
+          </p>
+          <Link href="/pack" className="mt-3 inline-block text-sm font-bold text-lime transition-opacity hover:opacity-80">
+            open the application pack →
+          </Link>
+        </div>
+      )}
+
       {apps.length === 0 && (
         <div className="rounded-2xl border border-lime/25 bg-lime/[0.06] p-6">
           <Eyebrow>start here</Eyebrow>

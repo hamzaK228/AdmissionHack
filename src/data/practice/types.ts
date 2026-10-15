@@ -48,7 +48,7 @@ export interface PracticeSet {
   examId: string;
   name: string;
   blurb: string;
-  /** suggested time in minutes; the runner counts up and never cuts you off */
+  /** suggested time in minutes. The runner counts up by default and never cuts you off; timed mode turns it into a hard limit and submits at zero. */
   minutes: number;
 }
 

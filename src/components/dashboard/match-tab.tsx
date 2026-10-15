@@ -123,7 +123,9 @@ export function MatchTab({
         <span className="text-lime">how this works:</span> heuristic v1 — estimated admit chance from
         each university&apos;s selectivity and QS/ARWU position, adjusted by your academic strength
         ({result.academic != null ? `${Math.round(result.academic * 100)}/100` : "not provided"}),
-        budget and English scores. Transparent, not a guarantee — always verify with the university.
+        budget and English scores. Transparent, not a guarantee — always verify with the university. The
+        bars on each card are its factors, left to right: <span className="text-lime">met</span>,{" "}
+        <span className="text-red">not met</span>, <span className="text-dim">not published</span>.
         {!hasScores && (
           <>
             {" "}
@@ -172,6 +174,26 @@ export function MatchTab({
                         <span className={`shrink-0 text-lg font-bold ${chanceColor(c.chance)}`}>
                           {Math.round(c.chance * 100)}%
                         </span>
+                      </div>
+                      {/**
+                        * The same reasons, as a shape.
+                        *
+                        * Deliberately a spine and not a radar. A radar needs a *magnitude* per axis,
+                        * and these reasons are three-valued: met, not met, and not published. A radar
+                        * drawn from pass/fail would be a picture of invented numbers — precise-looking
+                        * and meaningless, which is worse than the text it replaced. The spine shows
+                        * exactly what is known and leaves the unknowns visibly empty.
+                        */}
+                      <div className="mt-2 flex items-center gap-1" aria-hidden>
+                        {c.reasons.map((r, i) => (
+                          <span
+                            key={i}
+                            title={`${r.label}: ${r.detail}`}
+                            className={`h-1.5 flex-1 rounded-full ${
+                              r.ok === true ? "bg-lime" : r.ok === false ? "bg-red" : "bg-line2"
+                            }`}
+                          />
+                        ))}
                       </div>
                       {/* why factors */}
                       <div className="mt-2 space-y-1">
