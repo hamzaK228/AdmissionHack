@@ -20,6 +20,8 @@ export function SaveButton({
       type="button"
       aria-pressed={saved}
       aria-label={saved ? "Remove from shortlist" : "Save to shortlist"}
+      /* names its own verb for the cursor, which is more precise than "run" */
+      data-cursor={saved ? "remove from list" : "add to list"}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
