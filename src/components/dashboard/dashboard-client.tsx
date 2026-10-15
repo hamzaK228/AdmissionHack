@@ -23,6 +23,7 @@ import { downloadIcs } from "@/lib/calendar-export";
 import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
 import { DocumentFolders } from "@/components/dashboard/document-folders";
+import { DeadlineCount } from "@/components/dashboard/deadline-count";
 import { countries } from "@/data/countries";
 import { useAuth } from "@/lib/use-auth";
 // the checklist lives in data now: the counselor reads the same list
@@ -547,14 +548,21 @@ function OverviewTab({ uniIndex, onGo }: { uniIndex: Record<string, SlimUni>; on
         <div>
           <Eyebrow>deadline radar</Eyebrow>
           <div className="mt-4 space-y-2">
-            {deadlines.filter((d) => daysUntil(d.date) >= 0).slice(0, 4).map((d) => (
-              <div key={d.id} className={`flex items-center justify-between gap-3 rounded-xl border p-3.5 ${deadlineTone(daysUntil(d.date))}`}>
-                <span className="truncate text-sm font-bold text-paper">{d.title}</span>
-                <span className={`shrink-0 text-xs font-bold ${daysUntil(d.date) <= 30 ? "text-red" : "text-lime"}`}>
-                  {daysUntil(d.date)}d
-                </span>
-              </div>
-            ))}
+            {deadlines.filter((d) => daysUntil(d.date) >= 0).slice(0, 4).map((d, i) => {
+              const n = daysUntil(d.date);
+              return (
+                <div
+                  key={d.id}
+                  className={`row-in flex items-center justify-between gap-3 rounded-xl border p-3.5 ${deadlineTone(n)}`}
+                  style={{ animationDelay: `${i * 55}ms` }}
+                >
+                  <span className="min-w-0 truncate text-sm font-bold text-paper">{d.title}</span>
+                  <span className={n <= 7 ? "text-red" : n <= 30 ? "text-amber" : "text-lime"}>
+                    <DeadlineCount days={n} size={38} />
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -778,10 +786,14 @@ export function DashboardClient({
                   no deadlines yet — add exam dates, application closes, visa appointments…
                 </p>
               )}
-              {deadlines.map((d) => {
+              {deadlines.map((d, i) => {
                 const n = daysUntil(d.date);
                 return (
-                  <div key={d.id} className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${deadlineTone(n)}`}>
+                  <div
+                    key={d.id}
+                    className={`row-in flex items-center justify-between gap-3 rounded-xl border p-4 ${deadlineTone(n)}`}
+                    style={{ animationDelay: `${i * 45}ms` }}
+                  >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-paper">{d.title}</p>
                       <p className="text-xs text-dim">
@@ -790,11 +802,16 @@ export function DashboardClient({
                         {n < 0 ? "passed" : n === 0 ? "TODAY" : `${n} days left`}
                       </p>
                     </div>
-                    <button type="button" onClick={() => store.removeDeadline(d.id)}
-                      aria-label={`Remove ${d.title}`}
-                      className="shrink-0 rounded-lg border border-line px-2 py-1 text-xs text-dim transition-colors hover:border-red/50 hover:text-red">
-                      ✕
-                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className={n < 0 ? "text-dim" : n <= 7 ? "text-red" : n <= 30 ? "text-amber" : "text-lime"}>
+                        <DeadlineCount days={n} />
+                      </span>
+                      <button type="button" onClick={() => store.removeDeadline(d.id)}
+                        aria-label={`Remove ${d.title}`}
+                        className="rounded-lg border border-line px-2 py-1 text-xs text-dim transition-colors hover:border-red/50 hover:text-red">
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -874,6 +891,20 @@ export function DashboardClient({
           <div className="space-y-8">
             <AuthPanel />
             <CloudSync />
+            {/* the one place a curious owner would look for this */}
+            <div className="max-w-xl rounded-2xl border border-line bg-panel/70 p-5">
+              <Eyebrow>the database behind this</Eyebrow>
+              <p className="mt-3 text-sm leading-relaxed text-fog">
+                Fifteen tables, their foreign keys, and the row policies that decide who may read
+                whose workspace — drawn as a map and as tables.
+              </p>
+              <Link
+                href="/schema"
+                className="mt-3 inline-block text-xs font-bold text-lime transition-colors hover:text-paper"
+              >
+                open the schema →
+              </Link>
+            </div>
           </div>
         )}
         {tab === "counselor" && <CounselorView />}

@@ -128,6 +128,48 @@ body {
  * main thread is doing, and with no fill-mode it leaves no inline style behind once it
  * has finished.
  */
+/**
+ * A node arriving on the schema map.
+ *
+ * Deliberately CSS, and deliberately opacity-only. Anime.js drives everything through
+ * requestAnimationFrame, so an animation it starts can stall with the element left at the
+ * *first* keyframe — which for an entrance from `opacity: 0` means content that never appears.
+ * It did: every node on the map stayed invisible. CSS is driven by the browser's own timeline
+ * and, with no fill-mode, leaves the element at its natural state if it never runs at all.
+ *
+ * Opacity only, because a CSS transform on an SVG element overrides its `transform` attribute —
+ * these groups are positioned with `translate(...)`, and animating scale here would drop them
+ * on the origin.
+ */
+@keyframes nodeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* `backwards`, not `both`: the animation must not keep owning the opacity once it has
+   finished, because the map dims everything outside the hovered table's neighbourhood and that
+   is set as an attribute. */
+.node-in {
+  animation: nodeIn 0.42s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .node-in { animation: none; }
+}
+
+/**
+ * A row arriving — opacity and a short rise, CSS rather than JS for the same reason as
+ * `nodeIn`: a JS entrance can stall with the row left at its first keyframe, which is invisible.
+ */
+@keyframes rowIn {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: none; }
+}
+.row-in {
+  animation: rowIn 0.44s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-in { animation: none; }
+}
+
 @keyframes pageEnter {
   from { opacity: 0; transform: translate3d(0, 12px, 0); }
   to { opacity: 1; transform: none; }
