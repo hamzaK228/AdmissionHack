@@ -845,28 +845,33 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
                       >
                         open ↗
                       </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await setReportVerified(r.id, !r.isVerified);
-                          setReports(await listCloudReports(open ?? undefined));
-                        }}
-                        className={`rounded border px-2 py-1 text-[10px] font-bold transition-colors ${
-                          r.isVerified
-                            ? "border-line2 text-fog hover:border-amber/50 hover:text-amber"
-                            : "border-lime/40 bg-lime/10 text-lime hover:bg-lime/20"
-                        }`}
-                      >
-                        {r.isVerified ? "unverify" : "mark verified"}
-                      </button>
+                      {/* Attesting a score report is a counselor's act. A parent reads this
+                          screen, so the control is theirs to see, not to press. */}
+                      {mode === "counselor" && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await setReportVerified(r.id, !r.isVerified);
+                            setReports(await listCloudReports(open ?? undefined));
+                          }}
+                          className={`rounded border px-2 py-1 text-[10px] font-bold transition-colors ${
+                            r.isVerified
+                              ? "border-line2 text-fog hover:border-amber/50 hover:text-amber"
+                              : "border-lime/40 bg-lime/10 text-lime hover:bg-lime/20"
+                          }`}
+                        >
+                          {r.isVerified ? "unverify" : "mark verified"}
+                        </button>
+                      )}
                     </span>
                   </li>
                 ))}
               </ul>
               {reports.length > 0 && (
                 <p className="mt-2 text-[10px] leading-relaxed text-dim">
-                  Compare the document with the scores above before marking it verified. The write is
-                  restricted to the verification columns, so it cannot alter the file it attests to.
+                  {mode === "counselor"
+                    ? "Compare the document with the scores above before marking it verified. The write is restricted to the verification columns, so it cannot alter the file it attests to."
+                    : "A verified report is one a counselor has compared against the document. You can open the file; checking it off is theirs to do."}
                 </p>
               )}
             </section>
