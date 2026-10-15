@@ -28,6 +28,7 @@ import { CHECKLIST } from "@/data/document-checklist";
 import { universityBySlug } from "@/data/directory";
 import { isOpen, statusOf, statusRank, statusSpec, stepKey, stepProgress } from "@/lib/applications";
 import { STATUS_TONE } from "@/components/dashboard/college-list";
+import { StudentAtlas, type AtlasSnapshot } from "@/components/dashboard/student-atlas";
 
 /** The checklist's own wording, so a counselor reads the same words as the student. */
 const docLabel = (key: string) =>
@@ -93,6 +94,35 @@ function attentionFor(data: SyncPayload, docs: CloudFile[], reports: CloudReport
     }
   }
   return { open, soon, unverified, translationsOut, untouched, stepsOut };
+}
+
+/**
+ * The student's workspace, reduced to the shapes that describe them.
+ *
+ * The same snapshot the student sees on their own profile tab, so the two screens cannot tell
+ * different stories about the same person.
+ */
+function atlasFrom(data: SyncPayload, docs: CloudFile[]): AtlasSnapshot {
+  const checks = data.checklist ?? {};
+  const p = data.profile;
+  return {
+    name: p?.full_name || "unnamed applicant",
+    meta: [p?.level, p?.country, p?.intake, p?.budget ? `$${p.budget.toLocaleString()}/yr` : null].filter(
+      Boolean,
+    ) as string[],
+    apps: data.universities.map((u) => ({
+      name: universityBySlug(u.slug)?.name ?? u.slug.replace(/-/g, " "),
+      country: universityBySlug(u.slug)?.countryName ?? "",
+      tier: u.tier,
+      status: u.status ?? "planning",
+    })),
+    portfolio: data.portfolio.map((entry) => ({ kind: entry.kind, title: entry.title })),
+    exams: Object.entries(data.exams).map(([id, v]) => ({ id, overall: v.overall ?? "" })),
+    // only the document checklist counts here, not each application's own steps
+    docsDone: CHECKLIST.filter((c) => checks[c.id]).length,
+    docsTotal: CHECKLIST.length,
+    deadlines: data.deadlines.map((d) => ({ title: d.title, date: d.date })),
+  };
 }
 
 /**
@@ -564,6 +594,11 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
                 </ul>
               </div>
             )}
+
+            {/* who this student is, before the seven sections that describe them piecemeal */}
+            <div className="rounded-2xl border border-line bg-panel/40 p-5">
+              <StudentAtlas snapshot={atlasFrom(openData, docs)} />
+            </div>
 
             <section className="rounded-2xl border border-line bg-panel/70 p-4">
               <div className="flex items-baseline justify-between gap-2">

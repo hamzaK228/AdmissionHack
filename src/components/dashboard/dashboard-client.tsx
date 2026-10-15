@@ -24,6 +24,7 @@ import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
 import { DocumentFolders } from "@/components/dashboard/document-folders";
 import { DeadlineCount } from "@/components/dashboard/deadline-count";
+import { StudentAtlas, type AtlasSnapshot } from "@/components/dashboard/student-atlas";
 import { countries } from "@/data/countries";
 import { useAuth } from "@/lib/use-auth";
 // the checklist lives in data now: the counselor reads the same list
@@ -616,6 +617,36 @@ const ROLE_TAB_LABEL: Record<string, Partial<Record<TabId, string>>> = {
   parent: { counselor: "my child" },
 };
 
+/**
+ * The student's workspace as a snapshot, for the atlas.
+ *
+ * Deliberately built here rather than inside the atlas: the counselor's copy comes from the
+ * synced payload instead, and the atlas should not know which of the two it is rendering.
+ */
+function atlasFromStore(
+  store: ReturnType<typeof useStore>,
+  uniIndex: Record<string, SlimUni>,
+): AtlasSnapshot {
+  const p = store.profile;
+  return {
+    name: p?.name ?? "",
+    meta: [p?.level, p?.country, p?.intake, p?.budget ? `$${p.budget.toLocaleString()}/yr` : null].filter(
+      Boolean,
+    ) as string[],
+    apps: store.apps.map((a) => ({
+      name: uniIndex[a.slug]?.name ?? a.slug.replace(/-/g, " "),
+      country: uniIndex[a.slug]?.countryName ?? "",
+      tier: a.tier,
+      status: a.status ?? "planning",
+    })),
+    portfolio: store.portfolio.map((e) => ({ kind: e.kind, title: e.title })),
+    exams: Object.entries(store.exams).map(([id, v]) => ({ id, overall: v.overall ?? "" })),
+    docsDone: DOCS.filter((d) => store.checklist[d.id]).length,
+    docsTotal: DOCS.length,
+    deadlines: store.deadlines.map((d) => ({ title: d.title, date: d.date })),
+  };
+}
+
 export function DashboardClient({
   uniIndex,
   ieltsMinimums,
@@ -909,7 +940,12 @@ export function DashboardClient({
         )}
         {tab === "counselor" && <CounselorView />}
         {tab === "profile" && (
-          <div className="max-w-2xl">
+          <div className="max-w-5xl">
+            {/* the same picture a counselor or a parent sees of this student */}
+            <div className="mb-8 rounded-2xl border border-line bg-panel/40 p-5">
+              <StudentAtlas snapshot={atlasFromStore(store, uniIndex)} />
+            </div>
+            <div className="max-w-2xl">
             <ProfileWizard initial={profile} onDone={store.saveProfile} />
             <div className="mt-8 rounded-2xl border border-red/25 bg-red/[0.05] p-5">
               <Eyebrow>danger zone</Eyebrow>
@@ -927,6 +963,7 @@ export function DashboardClient({
                 className="mt-3 rounded-lg border border-red/40 px-4 py-2 text-xs font-bold text-red transition-colors hover:bg-red/10">
                 reset all workspace data
               </button>
+            </div>
             </div>
           </div>
         )}

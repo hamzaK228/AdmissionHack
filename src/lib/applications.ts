@@ -238,7 +238,11 @@ export interface AppSummary {
   open: number;
 }
 
-export function summarize(apps: TrackedApp[]): AppSummary {
+/**
+ * Counts by status. Takes anything carrying a `status` — like `statusOf`, because the callers
+ * include a synced workspace whose status column is plain `text`, not the union.
+ */
+export function summarize(apps: { status?: unknown }[]): AppSummary {
   const counts: Record<AppStatus, number> = {
     planning: 0,
     preparing: 0,
