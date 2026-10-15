@@ -33,19 +33,49 @@ export default async function JourneyStepPage({
   const next = journeySteps.find((s) => s.order === step.order + 1);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="reading-surface mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
       <Link href="/how-admission-works" className="text-sm text-fog transition-colors hover:text-lime">
         ← all steps
       </Link>
-      <div className="mt-8">
+      <div className="relative mt-8">
+        {/* a ghost numeral, so the step has a landmark rather than a sentence about itself */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-10 right-0 select-none font-mono text-[6.5rem] font-bold leading-none text-lime/[0.08]"
+        >
+          {String(step.order).padStart(2, "0")}
+        </span>
         <Eyebrow>
           step {step.order} of {journeySteps.length} · {step.timing}
         </Eyebrow>
         <h1 className="headline-gradient mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
           {step.title}
         </h1>
+        {/* the rail: eight steps, the ones behind you dimmed, the current one wide. It is the
+            cheapest orientation there is — one glance says how far in you are. */}
+        <nav className="mt-6 flex flex-wrap items-center gap-1.5" aria-label="all eight steps">
+          {journeySteps.map((sj) => {
+            const here = sj.slug === step.slug;
+            const done = sj.order < step.order;
+            return (
+              <Link
+                key={sj.slug}
+                href={`/how-admission-works/${sj.slug}`}
+                title={`${sj.order}. ${sj.shortTitle}`}
+                aria-current={here ? "step" : undefined}
+                className={`h-1.5 rounded-full transition-all ${
+                  here
+                    ? "w-12 bg-lime"
+                    : done
+                      ? "w-6 bg-lime/45 hover:bg-lime/70"
+                      : "w-6 bg-line2 hover:bg-lime/40"
+                }`}
+              />
+            );
+          })}
+        </nav>
       </div>
-      <p className="mt-5 text-base leading-relaxed text-fog">{step.summary}</p>
+      <p className="read mt-6">{step.summary}</p>
 
       <div className="mt-12 space-y-10">
         <Reveal>
@@ -57,10 +87,10 @@ export default async function JourneyStepPage({
               {step.whatToDo.map((item) => (
                 <li
                   key={item}
-                  className="flex gap-3 rounded-xl border border-line bg-panel/70 p-4 text-sm leading-relaxed text-fog"
+                  className="read flex gap-3 rounded-xl border border-line bg-panel/70 p-4"
                 >
-                  <span className="text-lime">[+]</span>
-                  {item}
+                  <span className="font-mono text-lime">[+]</span>
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
@@ -76,10 +106,10 @@ export default async function JourneyStepPage({
               {step.commonMistakes.map((item) => (
                 <li
                   key={item}
-                  className="flex gap-3 rounded-xl border border-red/25 bg-red/[0.06] p-4 text-sm leading-relaxed text-fog"
+                  className="read flex gap-3 rounded-xl border border-red/25 bg-red/[0.06] p-4"
                 >
-                  <span className="text-red">⚠</span>
-                  {item}
+                  <span className="font-mono text-red">⚠</span>
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
@@ -89,7 +119,7 @@ export default async function JourneyStepPage({
         <Reveal>
           <section className="rounded-2xl border border-lime/25 bg-lime/[0.06] p-6">
             <Eyebrow>how admissionhack helps</Eyebrow>
-            <p className="mt-3 text-sm leading-relaxed text-fog">{step.howAdmissionHackHelps}</p>
+            <p className="read mt-3">{step.howAdmissionHackHelps}</p>
           </section>
         </Reveal>
       </div>

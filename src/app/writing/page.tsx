@@ -26,7 +26,7 @@ export default function WritingSchoolPage() {
         description="The only part of the file that is a person rather than a number — which is why it is read the way it is read, fast and once. This is the technique, shown line by line on annotated models rather than described in the abstract."
       />
 
-      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <div className="reading-surface mx-auto max-w-6xl px-4 py-14 sm:px-6">
         {/* ── what the reader is doing ─────────────────────────────────────── */}
         <Reveal>
           <section>

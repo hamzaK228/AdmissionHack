@@ -35,7 +35,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
       : `$${country.tuitionUsdPerYear.min.toLocaleString()} – $${country.tuitionUsdPerYear.max.toLocaleString()}`;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="reading-surface mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
       <Link href="/countries" className="text-sm text-fog transition-colors hover:text-lime">
         ← all countries
       </Link>

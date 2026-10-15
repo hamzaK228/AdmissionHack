@@ -15,10 +15,69 @@
   --color-amber: #fbbf24;
   --color-red: #f87171;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+/**
+ * Long-form reading.
+ *
+ * Applied to prose — guides, essays, country reports — and nothing else. Three things change,
+ * and each is doing a job:
+ *
+ *  - **A proportional face.** Monospace is the brand and stays on every label, figure and
+ *    control; a paragraph set in it is slower to read because every glyph is the same width and
+ *    the eye loses the word shapes it skims by.
+ *  - **A measure of ~68 characters.** The comfort limit for a line of text is roughly 45–75
+ *    characters; past that the eye starts losing its place on the return sweep, which is what
+ *    "I got bored reading this" usually is.
+ *  - **More leading, slightly larger type.** 17px/1.75 rather than 14px/1.6, which is the
+ *    difference between body copy and fine print.
+ *
+ * `dim` is deliberately not used here: it measures 3.98:1 against the page, under the 4.5:1
+ * floor for body text, so it stays for metadata and captions and never for a sentence.
+ */
+.read {
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--color-fog);
+  max-width: 68ch;
+}
+.read h2,
+.read h3 {
+  font-family: var(--font-sans);
+  line-height: 1.25;
+  letter-spacing: -0.011em;
+  color: var(--color-paper);
+}
+.read li,
+.read p {
+  text-wrap: pretty;
+}
+.read strong {
+  color: var(--color-paper);
+}
+
+/**
+ * The same treatment, applied by pattern rather than by hand.
+ *
+ * Every reading surface on the site sets its prose paragraphs and list items as
+ * `text-sm leading-relaxed text-fog`. Rather than edit several dozen of them — and rather than
+ * set the whole page in the reading face, which would put the labels and the mono identity with
+ * it — the surfaces opt in with one class and the prose inside them is lifted, while headings,
+ * eyebrows, buttons and figures stay exactly as they were.
+ */
+.reading-surface p.leading-relaxed,
+.reading-surface li.leading-relaxed {
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  text-wrap: pretty;
+  max-width: 72ch;
 }
 
 body {

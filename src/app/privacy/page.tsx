@@ -34,7 +34,7 @@ export default function PrivacyPage() {
         description={`Last updated ${UPDATED}. This policy describes what this service actually does with your information, in the same words we would use to a person — including the parts we deliberately do not do.`}
       />
 
-      <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
+      <div className="reading-surface mx-auto max-w-3xl px-4 py-14 sm:px-6">
         <div className="rounded-2xl border border-lime/25 bg-lime/[0.06] p-6">
           <p className="text-sm font-bold text-lime">The short version</p>
           <p className="mt-3 text-sm leading-relaxed text-fog">

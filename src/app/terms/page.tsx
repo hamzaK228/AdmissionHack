@@ -20,7 +20,7 @@ export default function TermsPage() {
         description={`Last updated ${UPDATED}. Plain terms for a free service: what you keep, what we may do, what you may not do to other people, and — importantly — what this service cannot promise you.`}
       />
 
-      <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
+      <div className="reading-surface mx-auto max-w-3xl px-4 py-14 sm:px-6">
         <div className="rounded-2xl border border-lime/25 bg-lime/[0.06] p-6">
           <p className="text-sm font-bold text-lime">The short version</p>
           <p className="mt-3 text-sm leading-relaxed text-fog">

@@ -18,7 +18,7 @@ export default function HowAdmissionWorksPage() {
         title="How university admission actually works"
         description="Eight steps, in order, with realistic timing. Each one has what to do, the mistakes that cost people their season, and where AdmissionHack plugs in."
       />
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      <div className="reading-surface mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <ol className="space-y-3">
           {journeySteps.map((step, i) => (
             <Reveal key={step.slug} delay={i * 50}>
