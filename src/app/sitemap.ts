@@ -4,6 +4,9 @@ import type { MetadataRoute } from "next";
 // which is precisely the content search engines are meant to find. ./all re-exports
 // the merged set from ./directory.
 import { universities, countries, exams, journeySteps } from "@/data/all";
+// The four practice banks are the site's most substantive content, and they were the only
+// indexable pages missing from this file.
+import { practiceExamIds } from "@/data/practice";
 
 /**
  * The site's own origin, kept as one knob because the brand and domain are still
@@ -45,6 +48,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${base}/exams/${e.id}`,
       changeFrequency: "monthly" as const,
       priority: 0.8,
+    })),
+    ...practiceExamIds.map((id) => ({
+      url: `${base}/exams/${id}/practice`,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
     })),
     ...countries.map((c) => ({
       url: `${base}/countries/${c.slug}`,

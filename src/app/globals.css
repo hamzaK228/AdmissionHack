@@ -8,7 +8,7 @@
   --color-line2: #27401f;
   --color-paper: #e7f2e3;
   --color-fog: #93a891;
-  --color-dim: #5f755d;
+  --color-dim: #7d9179; /* was #5f755d — 3.98:1, under the 4.5:1 floor for body text */
   --color-lime: #c9ff4a;
   --color-mint: #5eead4;
   --color-cyan: #7dd3fc;
@@ -375,7 +375,7 @@ body {
   --color-line2: #cfd4cb;
   --color-paper: #0a0f0b;
   --color-fog: #4c574a;
-  --color-dim: #8d978a;
+  --color-dim: #6c776a; /* the light palette failed the same test on #f5f6f3 */
   --color-lime: #4d7c0f;
   --color-mint: #0f766e;
   background: var(--color-ink);

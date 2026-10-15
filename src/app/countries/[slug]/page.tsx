@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { countries, countryBySlug, universitiesByCountry } from "@/data/all";
+import { countries, countryBySlug, universitiesByCountry, withDefiniteArticle } from "@/data/all";
 import { FactCard, DataNotice, Eyebrow } from "@/components/ui";
 import { Reveal } from "@/components/reveal";
 
@@ -18,7 +18,7 @@ export async function generateMetadata({
   const country = countryBySlug(slug);
   if (!country) return {};
   return {
-    title: `Study in ${country.name} — admission system, costs, visa and scholarships`,
+    title: `Study in ${withDefiniteArticle(country.name)} — admission system, costs, visa and scholarships`,
     description: country.systemSummary,
   };
 }
@@ -46,7 +46,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
         </span>
         <div>
           <h1 className="headline-gradient text-3xl font-bold tracking-tight sm:text-4xl">
-            Studying in {country.name}
+            Studying in {withDefiniteArticle(country.name)}
           </h1>
           <p className="mt-1.5 text-sm text-dim">
             {unis.length} universities in the directory · intakes: {country.intakes.join(" · ")}

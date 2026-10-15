@@ -333,5 +333,46 @@ export const countries: Country[] = [
   },
 ];
 
+/**
+ * Country names that take a definite article when they stand alone in a sentence.
+ *
+ * "Studying in United States" is the kind of thing that makes a page look careless, and it was
+ * on four of the country guides. A list plus two patterns covers the QS set: the explicitly
+ * named ones, anything beginning "United", and the plural and "…Republic" forms.
+ */
+const WITH_THE = new Set([
+  "united states",
+  "united kingdom",
+  "united arab emirates",
+  "netherlands",
+  "philippines",
+  "bahamas",
+  "maldives",
+  "gambia",
+  "comoros",
+  "congo",
+  "czech republic",
+  "cayman islands",
+  "virgin islands",
+  "british virgin islands",
+  "solomon islands",
+  "marshall islands",
+  "turks and caicos islands",
+]);
+
+/**
+ * `United States` → `the United States`.
+ *
+ * Only for a country named *by itself* — "cost United States applicants their season" is correct
+ * without it — so callers opt in rather than the name carrying an article everywhere.
+ */
+export function withDefiniteArticle(name: string): string {
+  const lower = name.trim().toLowerCase();
+  if (WITH_THE.has(lower)) return `the ${name}`;
+  if (/^united\s/i.test(name)) return `the ${name}`;
+  if (/\s(islands|republic|emirates)$/i.test(name)) return `the ${name}`;
+  return name;
+}
+
 export const countryByCode = (code: string) => countries.find((c) => c.code === code);
 export const countryBySlug = (slug: string) => countries.find((c) => c.slug === slug);

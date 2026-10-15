@@ -73,7 +73,12 @@ export default function ResetPasswordPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-line bg-panel/70 p-6">
-          <Eyebrow>{mode === "update" ? "set a new password" : "reset your password"}</Eyebrow>
+          {/* a real heading: the page had none, for a screen reader or a crawler */}
+          <h1 className="text-[11px] font-bold uppercase tracking-[0.3em] text-dim">
+            <span className="text-lime/70">[ </span>
+            <span className="text-lime">{mode === "update" ? "set a new password" : "reset your password"}</span>
+            <span className="text-lime/70"> ]</span>
+          </h1>
           <p className="mt-3 text-sm leading-relaxed text-fog">
             {mode === "update"
               ? "Your link worked. Choose a new password for this account."
