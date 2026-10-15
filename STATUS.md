@@ -1329,3 +1329,38 @@ app had simply never grown the buttons. Nothing needed configuring.
   colours and `signInWithOAuth` are present in the deployed chunks. The SSR HTML shows `checking session…`
   because the panel waits for the session check, which is precisely why the bundle is the place to look.
 
+## The globe becomes legible, and a cursor (2026-10-15)
+
+The owner asked for the landing page to match the reference screencast's motion, a more understandable and
+beautiful Earth, and an animated cursor. **Video input is unavailable to the model**, so the reference was read
+frame by frame: ffmpeg pulled a frame every two seconds into a contact sheet, plus full-resolution grabs at the
+key moments.
+
+**What the frames actually showed** — worth recording, because it is the reference's real signature and not
+what one would guess: the dark→light transition is a **torn, ragged edge** rather than a clean cut; the globe's
+dot field **disperses into a particle scatter** as the next section arrives; the globe **scales on scroll**;
+and the phase sections move **horizontally** behind giant ghost numerals. We already had the filmstrip, the
+ghost numerals, the palette inversion and the scroll choreography. **The torn edge and the dot dispersal we do
+not** — those are the next step rather than something to fake with a clean fade.
+
+**Globe — a legibility bug rather than a matter of taste.** The country density halos were
+`R*0.05 + weight*R*0.30`, so the country with the most universities became a lime glow **a third of the
+planet's radius** that hid the land it was meant to annotate. The map was readable only where there were *few*
+universities, which is exactly backwards. Now a tenth of the area at half the alpha. Added **limb shading** — one
+radial gradient, transparent at the centre fading to the page colour at the rim — the cheapest thing that makes
+a field of dots read as a sphere instead of a disc; done as a single fill, because the land is one batched
+`Path2D` and ~41,000 per-dot fills a frame is not a trade worth making. Continents slightly denser, and the
+top-50 halo shrunk so bright dots read as lights rather than blobs.
+
+**Cursor** (`src/components/motion/cursor.tsx`) — a dot tracking the pointer exactly with a ring trailing on an
+exponential ease, swelling over anything interactive. Three limits, all deliberate: **off** inside `/dashboard`,
+`/cv`, `/signin` and `/auth`, where people type and aim at small controls and hiding the native cursor costs
+real usability for a decoration; **off** on touch and under reduced motion, returning nothing at all rather
+than something static; and `pointer-events: none`, so it can never intercept a click — the failure mode that
+turns a decorative cursor into an actual bug.
+
+**Verified:** `tsc` and the build clean, home page 200, and both changes present in the deployed bundle
+(`data-custom-cursor`, and the limb gradient's `rgba(3,5,4,0.9)`). **Not verified: how it looks.** A canvas
+rendering and a cursor's feel are visual judgements, and the owner holds the reference to compare against —
+so this needs their eye rather than my assertion.
+
