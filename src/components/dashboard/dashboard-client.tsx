@@ -788,7 +788,9 @@ export function DashboardClient({
          * transform runs on the compositor and lands on schedule whatever the main thread
          * is doing.
          */}
-        <div key={tab} className="page-enter">
+        {/* `reading-surface` lifts the explanatory paragraphs inside every tab to the reading face,
+            and touches nothing else — labels, figures and controls keep the terminal mono. */}
+        <div key={tab} className="reading-surface page-enter">
         {tab === "overview" && <OverviewTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "match" && <MatchTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "universities" && <CollegeList uniIndex={uniIndex} />}

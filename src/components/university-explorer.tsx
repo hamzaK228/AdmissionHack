@@ -175,7 +175,25 @@ export function UniversityExplorer({
                 )}
               </div>
             </div>
-            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-fog">{u.description}</p>
+            <p className="prose-sm mt-2 line-clamp-2 text-fog">{u.description}</p>
+
+            {/* How far up the field it sits, as a shape rather than a word: three segments,
+                filled to the band, so "is this a top-50 school?" is a glance instead of a
+                number the reader has to interpret. */}
+            <div className="mt-3 flex items-center gap-1" aria-hidden>
+              {[0, 1, 2].map((seg) => {
+                const band = u.qsRank == null ? -1 : u.qsRank <= 50 ? 0 : u.qsRank <= 200 ? 1 : 2;
+                const on = band >= 0 && seg <= band;
+                const tint = band === 0 ? "#c9ff4a" : band === 1 ? "#5eead4" : "#7dd3fc";
+                return (
+                  <span
+                    key={seg}
+                    className="h-1 flex-1 rounded-full"
+                    style={{ background: on ? tint : "#1c2b1a", opacity: on && seg < band ? 0.45 : 1 }}
+                  />
+                );
+              })}
+            </div>
             <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4">
               <Badge tone="green">{tuitionLabel(u)}</Badge>
               <Badge>{selectivityLabel(u)}</Badge>

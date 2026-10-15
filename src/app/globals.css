@@ -71,6 +71,20 @@ html {
  * it — the surfaces opt in with one class and the prose inside them is lifted, while headings,
  * eyebrows, buttons and figures stay exactly as they were.
  */
+/**
+ * The same reading face, sized for a card.
+ *
+ * A directory of 1,500 universities is 1,500 short paragraphs. At 17px/1.75 they would burst
+ * the cards, but leaving them in monospace is what makes the list tiring to scan — so this is
+ * the reading face at 15px/1.6, which is still proportional and still not fine print.
+ */
+.prose-sm {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
 .reading-surface p.leading-relaxed,
 .reading-surface li.leading-relaxed {
   font-family: var(--font-sans);
