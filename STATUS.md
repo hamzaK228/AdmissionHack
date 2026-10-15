@@ -1459,5 +1459,35 @@ description rather than from the reference itself, which is worth stating in cas
 
 Verified live: the font literal (`bold 9px ui-monospace`, `SFMono-Regular`) is present in the deployed home-page
 chunks and the page returns 200. **Not verified: how it looks** — a canvas trail is a visual judgement, and the
-owner has the reference.
+  owner has the reference.
+
+## Real university logos in the trail — verified in a browser (2026-10-15)
+
+The owner asked for logos "like ihubadmissions.org", so I **drove a browser to it and looked** rather than
+guessing again. It serves `yale-*.webp`, `columbia-*.webp`, `cornell-*.webp`, `duke-*.webp`, `nyu-*.webp` and
+more from its own asset folder — **real university marks, vendored into their build, not hotlinked**. That is
+the pattern followed here.
+
+- **`scripts/fetch-university-logos.mjs`** downloads each institution's published icon once into `public/logos/`
+  and generates `src/data/logos.ts`, keyed by the exact display name our directory uses. **22 of 28 vendored,
+  204 KB in total.**
+- **Verified by eye, not by exit code.** `cornell.png` is the crimson circle-and-shield, `harvard.png` the
+  VE RI TAS shield, `eth.png` the official ETH wordmark.
+- **Two fetch bugs found by looking at the misses.** The first run got **11 of 28**, and the misses were not
+  missing: `stanford.edu` answered **403 to an unfamiliar `User-Agent` and 200 to a browser's**, and
+  `ethz.ch` **404s both conventional paths** because its icon lives at a hashed build path. The script now sends
+  a normal browser UA and, when the guesses fail, reads the homepage and follows its own declared
+  `<link rel="icon">`. **11 → 22.**
+- **The payload limit lives at the download**, not in the UI: UCL's icon is a **433 KB** multi-size ICO and
+  Penn's is 243 KB — good icons, useless here, since they would add 676 KB to a trail whose entire budget is a
+  couple of hundred kilobytes. The script simply does not vendor anything over 60 KB, and six institutions fall
+  back to initials — the same fallback a failed decode gets.
+- Logos load **lazily on the first pointer movement over the globe**, never per mark, and at most once each. A
+  mark whose image has not arrived draws as initials and becomes a logo on the next frame, so the effect is
+  never blank and never waits on the network.
+- Marks draw as **a white card with the mark on it** — the reference's card language, and white is what makes a
+  crimson or black logo legible on a near-black globe.
+- **Confirmed in a real browser:** sweeping the cursor across the globe drew white cards carrying the Harvard
+  shield and the Cornell mark, fading as they travelled. That closes the loop on the one thing I had been unable
+  to verify all session — the visuals.
 
