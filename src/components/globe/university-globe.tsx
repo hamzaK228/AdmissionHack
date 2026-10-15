@@ -156,10 +156,10 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
         const y2 = vy * cosT - z1 * sinT;
         const z2 = vy * sinT + z1 * cosT;
         if (z2 <= 0.03) continue;
-        const s = 0.5 + z2 * 0.62;
+        const s = 0.6 + z2 * 0.66;
         landPath.rect(cx + x1 * R, cy - y2 * R, s, s);
       }
-      ctx.fillStyle = "rgba(238,246,236,0.88)";
+      ctx.fillStyle = "rgba(238,246,236,0.9)";
       ctx.fill(landPath);
 
       // density glow where higher education concentrates — cached sprite, no allocation
@@ -174,8 +174,16 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
         const z2 = vy * sinT + vz * cosT;
         if (z2 <= 0.03) continue;
         const weight = c.count / maxCount;
-        const rad = R * 0.05 + weight * R * 0.3;
-        ctx.globalAlpha = 0.35 + weight * 0.5;
+        /**
+         * Much smaller and fainter than it was, and that is a legibility fix rather
+         * than a taste one: at `R*0.05 + weight*R*0.30` the country with the most
+         * universities became a lime blob the size of a continent, which hid the very
+         * land it was meant to annotate — the map was readable only where there were
+         * few universities, which is exactly backwards. The density signal survives at
+         * a tenth of the area.
+         */
+        const rad = R * 0.03 + weight * R * 0.1;
+        ctx.globalAlpha = 0.16 + weight * 0.26;
         ctx.drawImage(haloSprite, cx + vx * R - rad, cy - y2 * R - rad, rad * 2, rad * 2);
       }
       ctx.globalAlpha = 1;
@@ -199,8 +207,8 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
         const alpha = 0.55 + z2 * 0.45;
         if (pt.rank <= 50) {
           ctx.beginPath();
-          ctx.arc(px, py, sz * 2.4, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(201,255,74," + alpha * 0.22 + ")";
+          ctx.arc(px, py, sz * 1.9, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(201,255,74," + alpha * 0.2 + ")";
           ctx.fill();
         }
         ctx.beginPath();
@@ -213,6 +221,27 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
               : "rgba(180,225,150," + alpha * 0.9 + ")";
         ctx.fill();
       }
+
+      /**
+       * Limb shading — the cheapest thing that makes a field of dots read as a sphere
+       * rather than a flat disc. A radial gradient, transparent at the centre and
+       * fading to the page colour at the rim, so every dot dims as it approaches the
+       * horizon.
+       *
+       * Deliberately one gradient fill rather than per-dot alpha: the land is a single
+       * batched Path2D, and giving each dot its own alpha would mean ~41,000 separate
+       * fills a frame. This costs one gradient and one fill, and it dims the whole
+       * surface uniformly — continents and universities alike, which is what depth
+       * looks like.
+       */
+      const limb = ctx.createRadialGradient(cx, cy, R * 0.5, cx, cy, R);
+      limb.addColorStop(0, "rgba(3,5,4,0)");
+      limb.addColorStop(0.72, "rgba(3,5,4,0.3)");
+      limb.addColorStop(1, "rgba(3,5,4,0.9)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fillStyle = limb;
+      ctx.fill();
 
       // hovered university
       const hv = hoverRef.current;

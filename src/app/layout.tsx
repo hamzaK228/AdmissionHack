@@ -9,6 +9,7 @@ import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
 import { MotionConfig } from "motion/react";
 import { AuroraParallax } from "@/components/motion/aurora-parallax";
 import { ScrollDriver } from "@/components/motion/scroll-driver";
+import { Cursor } from "@/components/motion/cursor";
 
 const jetbrains = JetBrains_Mono({
   variable: "--font-jetbrains",
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="flex-1">{children}</main>
           <SiteFooter />
           <ScrollDriver />
+          <Cursor />
           <CommandPalette />
           <OnboardingOverlay />
         </StoreProvider>
