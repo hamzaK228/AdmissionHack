@@ -127,18 +127,25 @@ export function Cursor() {
         label = next;
         retype(next);
       }
+      wake();
     };
     const onDown = () => {
       pressed = true;
+      wake();
     };
     const onUp = () => {
       pressed = false;
+      wake();
     };
     const onOut = () => {
       visible = false;
       label = null;
       retype(null);
+      // an idle loop would otherwise leave the dot parked where the pointer left
+      wake();
     };
+
+    const IDLE_EPS = 0.05;
 
     const tick = () => {
       // the whole trailing effect is this one line of arithmetic — no spring dependency
@@ -155,8 +162,27 @@ export function Cursor() {
       // the pill sits beside the pointer, never under it, so it cannot cover a target
       pill.style.transform = `translate3d(${rx + 18}px, ${ry + 16}px, 0)`;
 
+      /**
+       * Stop when nothing is changing.
+       *
+       * The ring has caught up with the pointer and no button is down, so this
+       * frame wrote exactly what the last one did. Running on anyway means four
+       * style writes and a compositor update every 16ms for as long as a mouse
+       * rests on the page — which is most of the time anyone spends reading it.
+       * The loop restarts on the next pointer event, where the ring has real work
+       * to do again.
+       */
+      if (!visible || (!pressed && Math.abs(tx - rx) < IDLE_EPS && Math.abs(ty - ry) < IDLE_EPS)) {
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(tick);
     };
+
+    const wake = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
     raf = requestAnimationFrame(tick);
 
     window.addEventListener("pointermove", onMove, { passive: true });

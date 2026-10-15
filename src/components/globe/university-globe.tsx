@@ -102,6 +102,22 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
   const dragRef = useRef({ active: false, lastX: 0, lastY: 0, moved: false });
   const hoverRef = useRef<GlobePoint | null>(null);
   const spinRef = useRef(0);
+  /** newest pointer position in wrapper-local pixels, consumed by the frame loop */
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  /** the university the label is showing — identity, so state only changes when it does */
+  const hoverPointRef = useRef<GlobePoint | null>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
+  /**
+   * The wrapper's viewport rect, refreshed on resize and scroll only.
+   *
+   * Pointer coordinates have to be converted to wrapper-local space, and reading
+   * `getBoundingClientRect()` inside a pointer handler is a read that follows the
+   * frame loop's style writes — the classic read-after-write that forces a
+   * synchronous layout, once per event, at whatever rate the mouse fires. The rect
+   * only changes when the element is resized or the page scrolls, so it is cached
+   * there and the handler does no layout at all.
+   */
+  const rectRef = useRef({ left: 0, top: 0, width: 0, height: 0 });
   const [hoverLabel, setHoverLabel] = useState<{ x: number; y: number; p: GlobePoint } | null>(null);
 
   const project = useCallback((lat: number, lng: number, cx: number, cy: number, R: number) => {
@@ -147,6 +163,7 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect();
+      rectRef.current = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       size = { w: rect.width, h: rect.height };
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
@@ -157,6 +174,14 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(wrap);
+
+    // scrolling moves the wrapper relative to the viewport, so the cached rect
+    // needs refreshing — but at scroll rate, not at pointer rate
+    const onScroll = () => {
+      const rect = wrap.getBoundingClientRect();
+      rectRef.current = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     /**
      * A loaded mark, or null while it is still arriving.
@@ -188,6 +213,47 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       const cx = w / 2;
       const cy = h / 2;
       const R = Math.min(w * 0.4, h * 0.44);
+
+      /**
+       * Hover picking, once per drawn frame instead of once per pointer event.
+       *
+       * The scan projects all 1,504 universities; on every mousemove that is
+       * thousands of trig evaluations a second, and because the label state was a
+       * fresh object each time it also re-rendered this whole component on every
+       * move. Picking per frame costs one scan per frame, and the label now only
+       * re-renders when the hovered university actually changes — while it follows
+       * the cursor imperatively, on the compositor, through a transform.
+       */
+      const ptr = pointerRef.current;
+      if (ptr) {
+        pointerRef.current = null;
+        let best: GlobePoint | null = null;
+        let bestD = 16;
+        for (let i = 0; i < points.length; i++) {
+          const p = project(points[i].lat, points[i].lng, cx, cy, R);
+          if (!p) continue;
+          const d = Math.hypot(p.x - ptr.x, p.y - ptr.y);
+          if (d < bestD) {
+            bestD = d;
+            best = points[i];
+          }
+        }
+        hoverRef.current = best;
+        spinRef.current = best ? 1 : 0;
+
+        if (best && best !== hoverPointRef.current) {
+          hoverPointRef.current = best;
+          setHoverLabel({ x: ptr.x, y: ptr.y, p: best });
+        } else if (!best && hoverPointRef.current) {
+          hoverPointRef.current = null;
+          setHoverLabel(null);
+        }
+
+        const el = labelRef.current;
+        if (best && el) {
+          el.style.transform = `translate3d(${ptr.x}px, ${ptr.y - 14}px, 0) translate(-50%, -100%)`;
+        }
+      }
 
       const cosR = Math.cos(rotRef.current);
       const sinR = Math.sin(rotRef.current);
@@ -416,20 +482,69 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       }
     };
 
-    const loop = () => {
+    /**
+     * Frame budget and visibility.
+     *
+     * A full repaint here — ~41,000 land dots as one batched path plus 1,504
+     * university marks — is the most expensive thing on the page, and it does not
+     * need 60fps to read as a slowly rotating planet. 30fps is indistinguishable
+     * for this motion and halves the cost. The loop also stops outright when the
+     * hero is scrolled out of view or the tab is hidden, instead of burning CPU to
+     * animate something nobody can see.
+     */
+    const FRAME_MS = 33;
+    let last = 0;
+    let running = false;
+    let visible = false;
+
+    const loop = (t: number) => {
+      raf = requestAnimationFrame(loop);
+      if (t - last < FRAME_MS) return;
+      last = t;
       if (!dragRef.current.active) rotRef.current += 0.0021 * (1 - spinRef.current * 0.85);
       draw();
+    };
+
+    const start = () => {
+      if (running || reduce) return;
+      running = true;
+      last = 0;
       raf = requestAnimationFrame(loop);
+    };
+    const stop = () => {
+      running = false;
+      cancelAnimationFrame(raf);
+      raf = 0;
     };
 
     if (reduce) draw();
-    else raf = requestAnimationFrame(loop);
+    else start();
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+        if (visible && !document.hidden) start();
+        else stop();
+      },
+      { threshold: 0.01 },
+    );
+    io.observe(wrap);
+
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else if (visible) start();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     const t = setTimeout(draw, 120);
 
     return () => {
-      cancelAnimationFrame(raf);
+      stop();
       clearTimeout(t);
       ro.disconnect();
+      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [points, countries, maxCount, project, reduce, landVectors]);
 
@@ -487,7 +602,7 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
          * than the wrapper's bounds. Also skipped while dragging (that gesture spins the
          * globe) and entirely under reduced motion.
          */
-        const rect = wrapRef.current!.getBoundingClientRect();
+        const rect = rectRef.current;
         const lx = e.clientX - rect.left;
         const ly = e.clientY - rect.top;
         const Rc = Math.min(rect.width * 0.4, rect.height * 0.44);
@@ -506,13 +621,10 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
           }
         }
 
-        const hit = pick(e.clientX, e.clientY);
-        hoverRef.current = hit;
-        spinRef.current = hit ? 1 : 0;
-        if (hit) {
-          const rect = wrapRef.current!.getBoundingClientRect();
-          setHoverLabel({ x: e.clientX - rect.left, y: e.clientY - rect.top, p: hit });
-        } else setHoverLabel(null);
+        // Hover is resolved once per drawn frame in draw(), not per pointer event:
+        // the scan projects all 1,504 universities and this event fires far more
+        // often than the screen refreshes.
+        pointerRef.current = { x: lx, y: ly };
       }}
       onPointerUp={(e) => {
         const d = dragRef.current;
@@ -526,6 +638,8 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       onPointerLeave={() => {
         dragRef.current.active = false;
         hoverRef.current = null;
+        hoverPointRef.current = null;
+        pointerRef.current = null;
         spinRef.current = 0;
         setHoverLabel(null);
       }}
@@ -536,8 +650,15 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       <canvas ref={canvasRef} className="block h-full w-full" />
       {hoverLabel && (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-lime/40 bg-ink/95 px-3 py-1.5 text-xs shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
-          style={{ left: hoverLabel.x, top: hoverLabel.y - 14 }}
+          ref={labelRef}
+          className="pointer-events-none absolute left-0 top-0 z-10 whitespace-nowrap rounded-lg border border-lime/40 bg-ink/95 px-3 py-1.5 text-xs shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
+          style={{
+            /* position lives in a transform so following the cursor never
+               re-renders: React owns which university it says, the frame loop
+               owns where it sits */
+            transform: `translate3d(${hoverLabel.x}px, ${hoverLabel.y - 14}px, 0) translate(-50%, -100%)`,
+            willChange: "transform",
+          }}
         >
           <span className="font-bold text-paper">{hoverLabel.p.name}</span>
           <span className="ml-2 text-lime">QS #{hoverLabel.p.rank}</span>
