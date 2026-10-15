@@ -1430,5 +1430,34 @@ repositioned from a ring buffer, active only while the pointer is over the globe
 no DOM creation per pointer event and no per-frame allocation; the marks are university **initials**, for the
 trademark reason above. That is a contained job — but it modifies the hero, which is the one surface where a
 mistake is most visible and least verifiable without eyes, so it deserves its own pass rather than being bolted
-on at the end of a long session.
+  on at the end of a long session.
+
+## University marks trail the cursor — built (2026-10-15)
+
+The owner asked for the reference's cursor trail on the main earth, with **little university marks**, and —
+explicitly — without filling the user's machine.
+
+- **Canvas, not DOM.** The trail is drawn into the same canvas on the same frame loop the globe already runs.
+  No element is created or destroyed as the pointer moves, React never re-renders, nothing is laid out, and
+  there is no second animation loop. The DOM version of this effect is the one that eats memory; this is not it.
+- **A bounded ring, compacted in place.** At most nine marks; each ages out over 1.2 s and the buffer is
+  compacted with a write index every frame, so a busy frame allocates nothing and waving the mouse hard cannot
+  grow memory. That is the part the performance request was really about.
+- **Only over the earth itself.** The spawn test is the **projection disc's radius**, not the wrapper's bounds —
+  the trail belongs to the globe, not to the panel around it. Skipped while dragging (that gesture spins the
+  globe) and entirely under reduced motion.
+- **Marks are the initials of the highest-ranked universities**, computed once into a small list so spawning is
+  an array read rather than a sort. `markFor()` grew three rules so the common cases read the way a person writes
+  them: a parenthetical abbreviation wins (MIT, UCB, LSE), then an all-caps word (ETH Zurich is **ETH**, not EZ;
+  RWTH Aachen is RWTH), then initials (Technical University of Munich is **TUM**). Verified across nine names.
+- Initials rather than logos, again: university marks are third-party trademarks, and a fabricated approximation
+  would be dishonest as well as a liability.
+
+**The reference could not be inspected.** `ihubadmissions.org` is JavaScript-rendered, so fetching it returns
+only its page title — the same wall the anime.js documentation site presents. So this was built from the owner's
+description rather than from the reference itself, which is worth stating in case their effect differs in detail.
+
+Verified live: the font literal (`bold 9px ui-monospace`, `SFMono-Regular`) is present in the deployed home-page
+chunks and the page returns 200. **Not verified: how it looks** — a canvas trail is a visual judgement, and the
+owner has the reference.
 
