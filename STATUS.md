@@ -1302,3 +1302,30 @@ university asks for a translation that does not exist.
   (`docs/finish-plan.md` Phase 0), and the two items that need a decision first — email reminders need SMTP,
   and monetisation is dropped.
 
+## Social sign-in, and errors that explain themselves (2026-10-14)
+
+The report was "auth works badly compared to the other site". The cause was not a bug: **Google, Facebook and
+GitHub were already enabled on the shared Supabase project** — switched on for the other product — and this
+app had simply never grown the buttons. Nothing needed configuring.
+
+- **Continue with Google / Facebook / GitHub** on `/signin`, via `signInWithOAuth` with an **absolute**
+  `redirectTo`. That detail matters: GoTrue does not error on an unlisted redirect — it silently substitutes
+  Site URL, which would land a student on the *other product's* domain after signing in with Google.
+- **GoTrue's errors are accurate and unhelpful, and three of them describe situations a student cannot guess
+  at.** `Invalid login credentials` is what you see when you signed up with Google and are now typing a
+  password that never existed — the fix is a different button, not a different password, and without saying
+  so the user concludes the site is broken. The unconfirmed-address and rate-limit cases now say what to do
+  as well.
+- **Signing in on `/signin` used to leave you on the sign-in page.** There is now a `next` target, and the
+  signed-in panel links to the dashboard — because "signed in" is not an outcome; reaching the workspace is.
+- Provider marks are **text-and-dot deliberately**: the official "Sign in with Google" button assets are
+  required for production and are not mine to draw, so this is an honest placeholder rather than a hand-drawn
+  approximation of someone's trademark.
+- **One account, two sessions — stated precisely, because "one login" is easy to overclaim.** Both products
+  authenticate against the same project, so the account pool is shared: a Google sign-in works on both, and
+  anyone who signed up on the other site already has an account here. What is *not* shared is the browser
+  session — Supabase stores it per origin — so signing in on one does not light up the other.
+- Verified in the **shipped bundle** rather than by fetching the page: `Continue with `, all three brand
+  colours and `signInWithOAuth` are present in the deployed chunks. The SSR HTML shows `checking session…`
+  because the panel waits for the session check, which is precisely why the bundle is the place to look.
+
