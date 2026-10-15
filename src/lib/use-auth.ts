@@ -136,7 +136,16 @@ export function useAuth() {
       email,
       password,
       options: {
-        data: { role, full_name: fullName },
+        /**
+         * `product` is here for the mailer, not the app.
+         *
+         * AdmissionHack and SAThack share one Supabase project, and a project has exactly one
+         * SMTP sender — so a student on AdmissionHack gets mail from whatever name is configured
+         * there, which today reads "SATHack". The From address cannot be split per product, but the
+         * templates can read this metadata, so the mail can name the product the student actually
+         * signed up on. SAThack's signup should send its own name in the same field.
+         */
+        data: { role, full_name: fullName, product: "AdmissionHack" },
         emailRedirectTo: typeof location !== "undefined" ? `${location.origin}/dashboard` : undefined,
       },
     });
