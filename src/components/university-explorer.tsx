@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { University } from "@/data/types";
 import { RANKING_EDITIONS } from "@/data/types";
 import { FIELDS } from "@/data/types";
-import { countryByCode } from "@/data/countries";
+import { countryByCode, flagForCountryName } from "@/data/countries";
 import { Badge } from "@/components/ui";
 import { SaveButton } from "@/components/save-button";
 import { Reveal } from "@/components/reveal";
@@ -161,7 +161,7 @@ export function UniversityExplorer({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[11px] text-dim">
-                  {u.country ? countryByCode(u.country)?.flag : "🌍"} {u.countryName}
+                  {flagForCountryName(u.countryName) || "🌍"} {u.countryName}
                   {u.city ? ` · ${u.city}` : ""}
                 </p>
                 <h3 className="mt-1.5 font-bold leading-snug text-paper transition-colors group-hover:text-lime">

@@ -160,6 +160,23 @@ for (const e of qsData as QsEntry[]) {
 
 universities.sort((a, b) => (a.qsRank ?? 99999) - (b.qsRank ?? 99999));
 
+/**
+ * The universities ranked immediately around this one.
+ *
+ * Computed from the QS rank, which every entry in the directory has, so it is real for all 1,506
+ * — including the 1,458 whose pages carry nothing else. It gives a thin page somewhere to go,
+ * and it answers a question a rank number raises on its own: what is it near?
+ */
+export function neighboursOf(slug: string, span = 3): { above: University[]; below: University[] } {
+  const sorted = universities.filter((u) => u.qsRank != null);
+  const i = sorted.findIndex((u) => u.slug === slug);
+  if (i < 0) return { above: [], below: [] };
+  return {
+    above: sorted.slice(Math.max(0, i - span), i).reverse(),
+    below: sorted.slice(i + 1, i + 1 + span),
+  };
+}
+
 const universityBySlug = (slug: string) => universities.find((u) => u.slug === slug);
 const universitiesByCountry = (name: string) =>
   universities

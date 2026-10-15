@@ -374,5 +374,56 @@ export function withDefiniteArticle(name: string): string {
   return name;
 }
 
+/**
+ * The directory's country names, mapped to ISO 3166-1 alpha-2.
+ *
+ * Only thirteen countries have a guide, so only thirteen had a flag: every other university in
+ * the directory rendered a globe emoji because `countryByCode` had nothing to find. These names
+ * are objective data — a country's code is not an editorial judgement — so mapping them is not
+ * inventing anything. "Northern Cyprus" is deliberately absent: it has no ISO code and no flag
+ * emoji, so it keeps the globe rather than being assigned someone else's.
+ */
+const COUNTRY_CODES: Record<string, string> = {
+  Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT", Azerbaijan: "AZ",
+  Bahrain: "BH", Bangladesh: "BD", Belarus: "BY", Belgium: "BE", "Bosnia & Herzegovina": "BA",
+  Brazil: "BR", Brunei: "BN", Bulgaria: "BG", Canada: "CA", Chile: "CL", "China (Mainland)": "CN",
+  Colombia: "CO", "Costa Rica": "CR", Croatia: "HR", Cuba: "CU", Cyprus: "CY", Czechia: "CZ",
+  Denmark: "DK", "Dominican Republic": "DO", Ecuador: "EC", Egypt: "EG", Estonia: "EE",
+  Ethiopia: "ET", Finland: "FI", France: "FR", Georgia: "GE", Germany: "DE", Ghana: "GH",
+  Greece: "GR", Guatemala: "GT", Honduras: "HN", "Hong Kong SAR": "HK", Hungary: "HU",
+  Iceland: "IS", India: "IN", Indonesia: "ID", Iran: "IR", Iraq: "IQ", Ireland: "IE",
+  Israel: "IL", Italy: "IT", Japan: "JP", Jordan: "JO", Kazakhstan: "KZ", Kenya: "KE",
+  Kuwait: "KW", Kyrgyzstan: "KG", Latvia: "LV", Lebanon: "LB", Lithuania: "LT",
+  Luxembourg: "LU", "Macau SAR": "MO", Malaysia: "MY", Malta: "MT", Mexico: "MX",
+  Morocco: "MA", Netherlands: "NL", "New Zealand": "NZ", Nigeria: "NG", Norway: "NO",
+  Oman: "OM", Pakistan: "PK", "Palestinian Territories": "PS", Panama: "PA", Paraguay: "PY",
+  Peru: "PE", Philippines: "PH", Poland: "PL", Portugal: "PT", "Puerto Rico": "PR",
+  Qatar: "QA", Romania: "RO", Russia: "RU", "Saudi Arabia": "SA", Serbia: "RS",
+  Singapore: "SG", Slovakia: "SK", Slovenia: "SI", "South Africa": "ZA", "South Korea": "KR",
+  Spain: "ES", "Sri Lanka": "LK", Sudan: "SD", Sweden: "SE", Switzerland: "CH", Syria: "SY",
+  Taiwan: "TW", Tanzania: "TZ", Thailand: "TH", Tunisia: "TN", "Türkiye": "TR", Uganda: "UG",
+  Ukraine: "UA", "United Arab Emirates": "AE", "United Kingdom": "GB", "United States": "US",
+  Uruguay: "UY", Uzbekistan: "UZ", Venezuela: "VE", Vietnam: "VN",
+};
+
+/**
+ * A flag from a country code.
+ *
+ * Regional-indicator flags are arithmetic, not a data file: each letter becomes the symbol
+ * 127397 codepoints above it, so the flag is derived rather than stored. That is why this fixes
+ * ninety-three countries at once.
+ */
+export function flagForCode(code: string): string {
+  const cc = code.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 2);
+  if (cc.length !== 2) return "";
+  return String.fromCodePoint(...[...cc].map((ch) => 127397 + ch.charCodeAt(0)));
+}
+
+/** The flag for a directory country name, or "" when we have no code for it. */
+export function flagForCountryName(name: string): string {
+  const code = COUNTRY_CODES[name] ?? COUNTRY_CODES[name.replace(/\s*\(.*\)$/, "")];
+  return code ? flagForCode(code) : "";
+}
+
 export const countryByCode = (code: string) => countries.find((c) => c.code === code);
 export const countryBySlug = (slug: string) => countries.find((c) => c.slug === slug);
