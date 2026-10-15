@@ -45,6 +45,7 @@ export const T = {
   portfolio: "ah_portfolio",
   documents: "ah_documents",
   checklist: "ah_checklist",
+  translations: "ah_translations",
   links: "ah_counselor_links",
   posts: "ah_posts",
   comments: "ah_comments",

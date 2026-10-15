@@ -12,6 +12,12 @@ import {
 } from "react";
 import { withStatus, statusSpec, type AppStatus } from "@/lib/applications";
 
+export interface TranslationState {
+  state: "needed" | "ordered" | "received";
+  translator?: string;
+  note?: string;
+}
+
 export interface Profile {
   name: string;
   level: "bachelor's" | "master's";
@@ -83,6 +89,7 @@ export interface WorkspaceImport {
   exams?: ExamResults;
   deadlines?: Deadline[];
   checklist?: Record<string, boolean>;
+  translations?: Record<string, TranslationState>;
 }
 
 interface Store {
@@ -109,6 +116,9 @@ interface Store {
   removeDeadline: (id: string) => void;
   checklist: Record<string, boolean>;
   toggleDoc: (id: string) => void;
+  /** sworn-translation state per document; the value is absent when there is nothing to track */
+  translations: Record<string, TranslationState>;
+  setTranslation: (docKey: string, next: TranslationState | null) => void;
   importWorkspace: (w: WorkspaceImport) => void;
   toast: string | null;
 }
@@ -142,6 +152,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [exams, setExams] = useState<ExamResults>({});
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [translations, setTranslationsState] = useState<Record<string, TranslationState>>({});
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -164,6 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setExams(load("ah.exams", {}));
     setDeadlines(load("ah.deadlines", []));
     setChecklist(load("ah.checklist", {}));
+    setTranslationsState(load("ah.translations", {}));
     setReady(true);
   }, []);
 
@@ -297,6 +309,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * Set — or clear — the translation state for one document.
+   *
+   * Passing null deletes the entry, because "this document needs no translation" and
+   * "this one is tracked but not started" are different answers, and only the second
+   * should occupy the list. The default state for a tracked document is `needed`.
+   */
+  const setTranslation = useCallback((docKey: string, next: TranslationState | null) => {
+    setTranslationsState((prev) => {
+      const copy = { ...prev };
+      if (next === null) delete copy[docKey];
+      else copy[docKey] = next;
+      persist("ah.translations", copy);
+      return copy;
+    });
+  }, []);
+
   const importWorkspace = useCallback(
     (w: WorkspaceImport) => {
       if (w.profile !== undefined) {
@@ -328,6 +357,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setChecklist(w.checklist);
         persist("ah.checklist", w.checklist);
       }
+      if (w.translations) {
+        setTranslationsState(w.translations);
+        persist("ah.translations", w.translations);
+      }
     },
     [],
   );
@@ -356,10 +389,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeDeadline,
       checklist,
       toggleDoc,
+      translations,
+      setTranslation,
       importWorkspace,
       toast,
     }),
-    [ready, onboarded, setOnboarded, profile, saveProfile, clearProfile, apps, toggleShortlist, setTier, setStatus, removeApp, portfolio, addPortfolio, removePortfolio, exams, saveExams, deadlines, addDeadline, removeDeadline, checklist, toggleDoc, importWorkspace, toast],
+    [ready, onboarded, setOnboarded, profile, saveProfile, clearProfile, apps, toggleShortlist, setTier, setStatus, removeApp, portfolio, addPortfolio, removePortfolio, exams, saveExams, deadlines, addDeadline, removeDeadline, checklist, toggleDoc, translations, setTranslation, importWorkspace, toast],
   );
 
   return (

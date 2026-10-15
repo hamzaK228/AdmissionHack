@@ -16,6 +16,7 @@ import { WritingCoach } from "@/components/dashboard/writing-coach";
 import { RequirementChecker } from "@/components/dashboard/requirement-checker";
 import { ArrivalTimeline } from "@/components/dashboard/arrival-timeline";
 import { Advisor } from "@/components/dashboard/advisor";
+import { Translations } from "@/components/dashboard/translations";
 import { Community } from "@/components/dashboard/community";
 import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
@@ -799,6 +800,7 @@ export function DashboardClient({
                   );
                 })}
               </ul>
+              <Translations />
             </aside>
           </div>
         )}

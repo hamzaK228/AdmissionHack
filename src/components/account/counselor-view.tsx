@@ -24,7 +24,12 @@ import {
   type CloudReport,
 } from "@/lib/cloud-files";
 import { DOC_FOLDERS } from "@/data/document-folders";
+import { CHECKLIST } from "@/data/document-checklist";
 import { universityBySlug } from "@/data/directory";
+
+/** The checklist's own wording, so a counselor reads the same words as the student. */
+const docLabel = (key: string) =>
+  CHECKLIST.find((c) => c.id === key)?.label.replace(/\s*\(.*\)$/, "") ?? key;
 
 const inputCls =
   "w-full rounded-lg border border-line bg-ink px-3.5 py-2.5 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-lime/60";
@@ -375,6 +380,49 @@ function CounselorRoster() {
                   </li>
                 ))}
               </ul>
+            </section>
+
+            <section>
+              <Eyebrow>translations</Eyebrow>
+              {Object.keys(openData.translations ?? {}).length === 0 ? (
+                <p className="mt-3 text-sm text-dim">
+                  nothing tracked — sworn translations are only needed when a document is not in the language
+                  of the course.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-1.5">
+                  {Object.entries(openData.translations ?? {}).map(([doc, t]) => (
+                    <li
+                      key={doc}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2 text-xs"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-paper">{docLabel(doc)}</span>
+                        {(t.translator || t.note) && (
+                          <span className="text-[10px] text-dim">
+                            {[t.translator, t.note].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className={`shrink-0 font-bold ${
+                          t.state === "received"
+                            ? "text-mint"
+                            : t.state === "ordered"
+                              ? "text-lime"
+                              : "text-amber"
+                        }`}
+                      >
+                        {t.state === "received" ? "in hand" : t.state === "ordered" ? "with translator" : "needs one"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-2 text-[10px] leading-relaxed text-dim">
+                Read-only. This is the step where a term is usually lost, so it is worth chasing before an
+                application looks complete on paper.
+              </p>
             </section>
 
             <section>

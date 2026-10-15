@@ -51,6 +51,11 @@ export interface SyncPayload {
     hours?: string;
   }[];
   checklist: Record<string, boolean>;
+  /**
+   * Per-document sworn-translation state, keyed by document. Optional on the payload
+   * because a client deployed before this existed still pushes without it.
+   */
+  translations?: Record<string, { state: string; translator?: string; note?: string }>;
 }
 
 export type SyncResult = { ok: true } | { ok: false; error: string };
@@ -81,6 +86,24 @@ async function trackerColumnsAvailable(sb: NonNullable<ReturnType<typeof supabas
   if (trackerColumns) return true;
   const { error } = await sb.from(T.universities).select("status").limit(1);
   if (!error) trackerColumns = true;
+  return !error;
+}
+
+/**
+ * Does the translations table exist yet?
+ *
+ * Same reasoning as the tracker columns, and the same trap: the table arrives by
+ * migration, and the push below deletes a student's rows *before* inserting the new
+ * ones. If the table were missing, the delete would fail harmlessly but an insert
+ * would fail after a successful delete — so the probe runs first, and only a positive
+ * answer is cached, so a transient failure retries rather than disabling the feature
+ * for the session.
+ */
+let translationsTable = false;
+async function translationsTableAvailable(sb: NonNullable<ReturnType<typeof supabase>>): Promise<boolean> {
+  if (translationsTable) return true;
+  const { error } = await sb.from(T.translations).select("doc_key").limit(1);
+  if (!error) translationsTable = true;
   return !error;
 }
 
@@ -166,6 +189,22 @@ export async function pushWorkspace(payload: SyncPayload): Promise<SyncResult> {
       if (error) throw error;
     }
 
+    // probed before the delete, like the tracker columns
+    if (await translationsTableAvailable(sb)) {
+      await sb.from(T.translations).delete().eq("user_id", id);
+      const rows = Object.entries(payload.translations ?? {}).map(([doc_key, v]) => ({
+        user_id: id,
+        doc_key,
+        state: v.state,
+        translator: v.translator ?? null,
+        note: v.note ?? null,
+      }));
+      if (rows.length) {
+        const { error } = await sb.from(T.translations).insert(rows);
+        if (error) throw error;
+      }
+    }
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -206,13 +245,14 @@ const readWorkspace = async (
     return base.data ?? [];
   };
 
-  const [profile, exams, unis, deadlines, portfolio, checklist] = await Promise.all([
+  const [profile, exams, unis, deadlines, portfolio, checklist, translations] = await Promise.all([
     sb.from(T.profiles).select("*").eq("id", id).maybeSingle(),
     sb.from(T.exams).select(EXAM_COLS).eq("user_id", id),
     readUniRows(),
     sb.from(T.deadlines).select("title, due_on").eq("user_id", id),
     sb.from(T.portfolio).select("kind, title, org, description, years, hours").eq("user_id", id),
     sb.from(T.checklist).select("doc_key, done").eq("user_id", id),
+    sb.from(T.translations).select("doc_key, state, translator, note").eq("user_id", id),
   ]);
 
   return {
@@ -256,6 +296,17 @@ const readWorkspace = async (
       hours: r.hours ?? undefined,
     })),
     checklist: Object.fromEntries((checklist.data ?? []).map((r) => [r.doc_key, r.done])),
+    // absent (not fatal) when the table has not been migrated in yet
+    translations: Object.fromEntries(
+      (translations?.data ?? []).map((r) => [
+        r.doc_key,
+        {
+          state: r.state,
+          ...(r.translator ? { translator: r.translator } : {}),
+          ...(r.note ? { note: r.note } : {}),
+        },
+      ]),
+    ),
   };
 };
 

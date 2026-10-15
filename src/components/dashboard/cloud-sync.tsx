@@ -11,6 +11,7 @@ import {
   type ExamResults,
   type PortfolioEntry,
   type Profile,
+  type TranslationState,
   type WorkspaceImport,
 } from "@/components/dashboard/store";
 import { Eyebrow } from "@/components/ui";
@@ -35,6 +36,7 @@ type LocalState = {
   exams: ExamResults;
   deadlines: Deadline[];
   checklist: Record<string, boolean>;
+  translations: Record<string, TranslationState>;
 };
 
 /** Local store → the wire shape. */
@@ -104,6 +106,7 @@ function toPayload(s: LocalState): SyncPayload {
       hours: p.hours || undefined,
     })),
     checklist: s.checklist,
+    translations: s.translations,
   };
 }
 
@@ -157,6 +160,13 @@ function fromPayload(w: SyncPayload): WorkspaceImport {
     },
     deadlines: w.deadlines.map((d) => ({ id: crypto.randomUUID(), title: d.title, date: d.date })),
     checklist: w.checklist,
+    // Only a state this app recognises is written back — a value from a newer (or
+    // hand-edited) database must not be persisted into this student's workspace.
+    translations: Object.fromEntries(
+      Object.entries(w.translations ?? {})
+        .filter(([, v]) => ["needed", "ordered", "received"].includes(v.state))
+        .map(([k, v]) => [k, { ...v, state: v.state as TranslationState["state"] }]),
+    ),
   };
 }
 
@@ -187,6 +197,7 @@ export function CloudSync() {
     exams: store.exams,
     deadlines: store.deadlines,
     checklist: store.checklist,
+    translations: store.translations,
   };
 
   const counts = [

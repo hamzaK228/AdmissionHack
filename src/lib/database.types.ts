@@ -564,6 +564,44 @@ export type Database = {
           },
         ];
       };
+      /* Per-document sworn-translation state (migration 0007). The owner writes;
+         a linked counselor reads, because chasing translations is exactly the
+         unglamorous step a counselor exists to notice. */
+      ah_translations: {
+        Row: {
+          doc_key: string;
+          note: string | null;
+          state: string;
+          translator: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          doc_key: string;
+          note?: string | null;
+          state?: string;
+          translator?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          doc_key?: string;
+          note?: string | null;
+          state?: string;
+          translator?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ah_translations_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "ah_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ah_university_lists: {
         Row: {
           added_at: string;
