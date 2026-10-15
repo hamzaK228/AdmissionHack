@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { animate, createMotionPath } from "animejs";
 import { useReducedMotion } from "motion/react";
 import { useStore } from "@/components/dashboard/store";
@@ -202,15 +202,39 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
 
   const homeCoords = home ? coordsFor(home) : undefined;
   /**
-   * Where the camera points, held as a university name: null means "look at home".
+   * Where the camera points: `null` means "look at home".
    *
-   * An orthographic globe can only show one hemisphere, so a view centred strictly on
-   * home hides every destination more than 90° away — for a Kazakhstani student with an
-   * American list, that is the whole list. Turning the globe to a university is how the
-   * other half comes into view, and it is a state change rather than a drag, so the
-   * canvas is still only drawn when it changes instead of every frame.
+   * An orthographic globe shows one hemisphere, so a view centred strictly on home hides
+   * every destination more than 90° away — for a Kazakhstani student with an American
+   * list, that is the whole list. The view is therefore turnable two ways: **drag the
+   * planet**, or click a university in the legend to bring it to the middle. A drag
+   * produces arbitrary angles, so the view is a latitude and longitude; `name` is set
+   * only when a university is what the camera was pointed at, so the caption can say
+   * which.
    */
-  const [view, setView] = useState<string | null>(null);
+  const [view, setView] = useState<{ lat: number; lng: number; name?: string } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  /**
+   * Dragging, and why this is still not a frame loop.
+   *
+   * A drag produces a new view on every pointer event, and each one costs a canvas repaint
+   * and a rebuild of every arc — so the updates are coalesced to one per animation frame.
+   * The globe is redrawn *while you are turning it* and not one frame longer, which is the
+   * same bargain the design started with; there is no timer, and an untouched globe costs
+   * nothing.
+   */
+  const drag = useRef({ active: false, x: 0, y: 0, moved: false });
+  /** the lat/lng the current gesture has accumulated, held across frames so a burst of
+      pointer events cannot each apply its delta to a stale view and stutter */
+  const acc = useRef<{ lat: number; lng: number } | null>(null);
+  const queued = useRef<{ lat: number; lng: number } | null>(null);
+  const frame = useRef(0);
+  const viewRef = useRef<{ lat: number; lng: number; name?: string } | null>(null);
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
 
   /**
    * The destinations: the universities themselves, not the countries they sit in.
@@ -241,16 +265,11 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
     return out.sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
   }, [apps, uniIndex]);
 
-  /**
-   * The camera's target. A university name resolves through the destination list, not
-   * through the country table: those are different key sets, and looking a university up
-   * in the country table returns nothing — a globe that silently refuses to turn.
-   */
-  const viewCoords = useMemo<[number, number] | undefined>(() => {
-    if (!view) return homeCoords;
-    const t = targets.find((x) => x.name === view);
-    return t ? [t.lat, t.lng] : homeCoords;
-  }, [view, targets, homeCoords]);
+  /** The camera's target: the turned view when there is one, home when there is not. */
+  const viewCoords = useMemo<[number, number] | undefined>(
+    () => (view ? [view.lat, view.lng] : homeCoords),
+    [view, homeCoords],
+  );
   const camera = useMemo(
     () => (viewCoords ? cameraFor(viewCoords[0], viewCoords[1]) : null),
     [viewCoords],
@@ -269,6 +288,68 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
     () => (camera && homeCoords ? project(toVec(homeCoords[0], homeCoords[1]), camera, CX, CY, R) : null),
     [camera, homeCoords],
   );
+
+  /**
+   * Turning the planet by hand.
+   *
+   * The rate is chosen so that dragging the globe's own radius turns it about a quarter
+   * turn — fast enough to cross the world in one gesture, slow enough to land on a city.
+   * Latitude stops short of the poles, where the axis of a longitude rotation degenerates
+   * and the globe would start spinning rather than tracking.
+   */
+  const RAD_PER_PX = 0.006;
+  const MAX_LAT = 1.45;
+
+  const flush = () => {
+    frame.current = 0;
+    const next = queued.current;
+    if (!next) return;
+    queued.current = null;
+    setView(next);
+  };
+
+  const onDragStart = (e: ReactPointerEvent<HTMLDivElement>) => {
+    drag.current = { active: true, x: e.clientX, y: e.clientY, moved: false };
+    acc.current = null;
+    try {
+      /* capture so the gesture survives the pointer crossing the legend on its way out. It
+         throws for a pointer id the browser does not consider active, which is no reason
+         to abandon the drag. */
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {
+      /* not capturable — the drag still tracks while the pointer is over the globe */
+    }
+    setDragging(true);
+  };
+
+  const onDragMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!drag.current.active) return;
+    const dx = e.clientX - drag.current.x;
+    const dy = e.clientY - drag.current.y;
+    drag.current.x = e.clientX;
+    drag.current.y = e.clientY;
+    if (Math.abs(dx) + Math.abs(dy) > 1) drag.current.moved = true;
+
+    const from =
+      acc.current ??
+      (viewRef.current ? { lat: viewRef.current.lat, lng: viewRef.current.lng } : null) ??
+      (homeCoords ? { lat: homeCoords[0], lng: homeCoords[1] } : null);
+    if (!from) return;
+
+    const next = {
+      lat: Math.max(-MAX_LAT, Math.min(MAX_LAT, from.lat - dy * RAD_PER_PX)),
+      lng: from.lng + dx * RAD_PER_PX,
+    };
+    acc.current = next;
+    queued.current = next;
+    if (!frame.current) frame.current = requestAnimationFrame(flush);
+  };
+
+  const onDragEnd = () => {
+    drag.current.active = false;
+    acc.current = null;
+    setDragging(false);
+  };
 
   /** a route carries the geometry; the destination carries the slug, logo and rank */
   const detail = useMemo(() => new Map(targets.map((t) => [t.name, t])), [targets]);
@@ -292,7 +373,13 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
   // only the markers move: one anime.js tween per route, along its own arc
   useEffect(() => {
     const svg = svgRef.current;
-    if (reduce || !svg || routes.length === 0) return;
+    /**
+     * Not while dragging: the pulses ride paths that the gesture is rewriting every frame,
+     * and re-creating a tween per route per frame would cost more than the globe itself.
+     * They are hidden for the duration and rebuilt once, from the final geometry, when the
+     * gesture ends.
+     */
+    if (reduce || !svg || routes.length === 0 || dragging) return;
 
     const running = routes.map((_, i) => {
       const path = svg.querySelector<SVGPathElement>(`#arc-${i}`);
@@ -314,7 +401,7 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
     return () => {
       for (const a of running) a?.revert();
     };
-  }, [routes, reduce]);
+  }, [routes, reduce, dragging]);
 
   if (!loaded) return <p className="text-sm text-dim">loading…</p>;
 
@@ -384,7 +471,13 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
             <p className="text-xs leading-relaxed text-dim">
               {view ? (
                 <>
-                  turned to <span className="text-lime">{view}</span>
+                  {view.name ? (
+                    <>
+                      turned to <span className="text-lime">{view.name}</span>
+                    </>
+                  ) : (
+                    <>free view — you turned the planet by hand</>
+                  )}
                   {behind.size > 0 && (
                     <>
                       {" "}
@@ -394,7 +487,7 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
                   )}
                 </>
               ) : (
-                <>centred on you — click a university below to turn the globe to it</>
+                <>centred on you — drag the planet to turn it, or click a university below</>
               )}
             </p>
             {view && (
@@ -407,7 +500,22 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
               </button>
             )}
           </div>
-          <div className="relative mx-auto mt-4 aspect-square w-full max-w-[620px]">
+          {/**
+           * The whole square takes the drag, not just the disc: a gesture that starts a
+           * few pixels outside the limb and then crosses it should still turn the globe,
+           * which is how every map in the world behaves. `touchAction: pan-y` keeps a
+           * vertical swipe scrolling the page on a phone while a horizontal one turns the
+           * planet, so the globe never becomes a trap you cannot scroll past.
+           */}
+          <div
+            className="relative mx-auto mt-4 aspect-square w-full max-w-[620px] cursor-grab select-none active:cursor-grabbing"
+            style={{ touchAction: "pan-y" }}
+            onPointerDown={onDragStart}
+            onPointerMove={onDragMove}
+            onPointerUp={onDragEnd}
+            onPointerCancel={onDragEnd}
+            onPointerLeave={onDragEnd}
+          >
           <canvas ref={setCanvasEl} className="absolute inset-0 h-full w-full" aria-hidden />
           <svg
             ref={svgRef}
@@ -440,7 +548,7 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
                   strokeOpacity={active === null || active === r.name ? 0.5 : 0.16}
                 />
                 {/* the travelling signal — the only thing animated by JS */}
-                <circle id={`pulse-${i}`} r={4} fill="#c9ff4a" opacity={0.95} />
+                <circle id={`pulse-${i}`} r={4} fill="#c9ff4a" opacity={dragging ? 0 : 0.95} />
               </g>
             ))}
 
@@ -540,7 +648,7 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
             <li key={t.slug}>
               <button
                 type="button"
-                onClick={() => setView(t.name)}
+                onClick={() => setView({ lat: t.lat, lng: t.lng, name: t.name })}
                 title={`turn the globe to ${t.name}`}
                 onPointerEnter={() => setActive(t.name)}
                 onPointerLeave={() => setActive(null)}
