@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase, T, isSupabaseConfigured } from "./supabase";
+import { currentAuthUser } from "./use-auth";
 import type { AhPortfolioKind, AhTier } from "./database.types";
 
 /**
@@ -60,12 +61,15 @@ export interface SyncPayload {
 
 export type SyncResult = { ok: true } | { ok: false; error: string };
 
-const uid = async () => {
-  const sb = supabase();
-  if (!sb) return null;
-  const { data } = await sb.auth.getUser();
-  return data.user?.id ?? null;
-};
+/**
+ * Who is signed in — from the same shared resolve the UI uses.
+ *
+ * This used to call `getUser()` for itself, so the data layer and the page header could
+ * disagree about whether anyone was signed in at all: two concurrent calls race the same
+ * token refresh and the loser is told there is no user. That is how a signed-in parent's
+ * student list came back empty. See `currentAuthUser`.
+ */
+const uid = async () => (await currentAuthUser())?.id ?? null;
 
 /**
  * Do the tracker columns exist yet?

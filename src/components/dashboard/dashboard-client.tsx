@@ -24,6 +24,7 @@ import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
 import { DocumentFolders } from "@/components/dashboard/document-folders";
 import { countries } from "@/data/countries";
+import { useAuth } from "@/lib/use-auth";
 // the checklist lives in data now: the counselor reads the same list
 import { CHECKLIST as DOCS } from "@/data/document-checklist";
 import { Eyebrow } from "@/components/ui";
@@ -585,6 +586,28 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
+/**
+ * The tabs each role actually uses.
+ *
+ * A counselor or a parent was shown all sixteen student tabs, with their own screen
+ * fifteenth in a horizontally scrolling row — behind a workspace that is not theirs. These
+ * are not hidden out of tidiness: they are *someone else's* workspace, and offering them
+ * invites a counselor to start filling in an application for a student.
+ *
+ * `who` is the account tab: signing out and managing your own sync is the one thing every
+ * role needs.
+ */
+const ROLE_TABS: Record<string, TabId[]> = {
+  counselor: ["counselor", "who"],
+  parent: ["counselor", "who"],
+};
+
+/** What that one shared tab is called, from each side of the relationship. */
+const ROLE_TAB_LABEL: Record<string, Partial<Record<TabId, string>>> = {
+  counselor: { counselor: "my students" },
+  parent: { counselor: "my child" },
+};
+
 export function DashboardClient({
   uniIndex,
   ieltsMinimums,
@@ -594,10 +617,20 @@ export function DashboardClient({
 }) {
   const store = useStore();
   const { ready, profile, deadlines, checklist, apps, portfolio } = store;
+  const { user } = useAuth();
+  const role = user?.role ?? "student";
+  const isStudent = role === "student";
+  const allowed = ROLE_TABS[role];
+  const tabs = allowed ? TABS.filter((t) => allowed.includes(t.id)) : TABS;
   const [tab, setTab] = useState<TabId>("overview");
   const [editing, setEditing] = useState(false);
   const [dlTitle, setDlTitle] = useState("");
   const [dlDate, setDlDate] = useState("");
+
+  /** a counselor or parent has exactly one screen here; open on it rather than "overview" */
+  useEffect(() => {
+    if (user && !isStudent) setTab("counselor");
+  }, [user, isStudent]);
 
   const docsDone = DOCS.filter((d) => checklist[d.id]).length;
   const nextDeadline = deadlines.find((d) => daysUntil(d.date) >= 0);
@@ -611,7 +644,7 @@ export function DashboardClient({
     );
   }
 
-  if (!profile && !editing) {
+  if (!profile && !editing && isStudent) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
         <Eyebrow>personal workspace · no account needed</Eyebrow>
@@ -647,33 +680,51 @@ export function DashboardClient({
       {/* header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Eyebrow>personal workspace</Eyebrow>
+          <Eyebrow>
+            {role === "counselor" ? "counselor desk" : role === "parent" ? "parent view" : "personal workspace"}
+          </Eyebrow>
           <h1 className="headline-gradient mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-            <span className="text-lime/60">&gt;</span> whoami
+            <span className="text-lime/60">&gt;</span>{" "}
+            {role === "counselor" ? "my students" : role === "parent" ? "my child's application" : "whoami"}
           </h1>
-          <p className="mt-2 text-lg font-bold text-paper">
-            {profile!.name || "applicant"}{" "}
-            <span className="text-sm font-normal text-fog">
-              · {profile!.level} · {profile!.country} · {profile!.intake}
-            </span>
-          </p>
+          {isStudent ? (
+            <p className="mt-2 text-lg font-bold text-paper">
+              {profile!.name || "applicant"}{" "}
+              <span className="text-sm font-normal text-fog">
+                · {profile!.level} · {profile!.country} · {profile!.intake}
+              </span>
+            </p>
+          ) : (
+            /**
+             * Saying who this page is for matters. Everything below is built for someone
+             * filling in their own applications, so without this line the first thing a
+             * counselor or a parent reads is a student's name and a student's intake.
+             */
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fog">
+              {role === "counselor"
+                ? "Read-only access to the students who have accepted you. Nothing is visible until a student accepts, and access ends the moment they withdraw it — enforced by the database, not by this screen."
+                : "Read-only access to your child's application. Nothing is visible until they accept, and either side can end it at any time."}
+            </p>
+          )}
         </div>
-        <button type="button" onClick={() => setEditing(true)}
-          className="rounded-lg border border-line bg-panel px-4 py-2.5 text-sm font-bold text-fog transition-colors hover:border-lime/40 hover:text-lime">
-          edit profile
-        </button>
+        {isStudent && (
+          <button type="button" onClick={() => setEditing(true)}
+            className="rounded-lg border border-line bg-panel px-4 py-2.5 text-sm font-bold text-fog transition-colors hover:border-lime/40 hover:text-lime">
+            edit profile
+          </button>
+        )}
       </div>
 
       {/* tabs */}
       <div className="mt-8 flex gap-1 overflow-x-auto border-b border-line pb-px">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
             className={`whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm transition-colors ${
               tab === t.id
                 ? "border-b-2 border-lime bg-lime/[0.06] font-bold text-lime"
                 : "text-fog hover:text-paper"
             }`}>
-            {t.label}
+            {ROLE_TAB_LABEL[role]?.[t.id] ?? t.label}
             {t.id === "universities" && apps.length > 0 && (
               <span className="ml-1.5 rounded-full bg-lime px-1.5 text-[10px] font-bold text-ink">{apps.length}</span>
             )}

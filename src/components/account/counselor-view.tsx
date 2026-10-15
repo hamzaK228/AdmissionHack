@@ -102,7 +102,25 @@ const frameCls = "max-w-xl rounded-2xl border border-dashed border-line2 bg-pane
  * still reads nothing, and a revocation takes effect on the next query.
  */
 export function CounselorView() {
-  const { user, configured } = useAuth();
+  const { user, loading, configured } = useAuth();
+
+  /**
+   * Say "checking", never "sign in", while the session is still being read.
+   *
+   * `loading` first meant a signed-in counselor was shown "sign in to connect a counselor
+   * account" for as long as the resolve took — a screen telling them to do the thing they
+   * had already done.
+   */
+  if (configured && loading && !user) {
+    return (
+      <div className={frameCls}>
+        <Eyebrow>counselor view</Eyebrow>
+        <p className="mt-3 text-sm text-dim">
+          <span className="anim-blink text-lime">▌</span> checking your session…
+        </p>
+      </div>
+    );
+  }
 
   if (!configured || !user) {
     return (
@@ -116,7 +134,21 @@ export function CounselorView() {
     );
   }
 
-  return user.role === "counselor" ? <CounselorRoster /> : <StudentConnections />;
+  /**
+   * A parent is not a counselor and is certainly not a student.
+   *
+   * `parent` has been a role since the first migration, and every screen treated it as a
+   * student: a parent signed up, chose "I'm supporting one", and was shown "a counselor can
+   * ask to review your workspace" — a workspace they do not have — plus an invitation to join
+   * a class group so someone could read *their* dashboard. Nobody ever saw a parent's point
+   * of view, because there wasn't one.
+   *
+   * They now get the same read-only access a counselor gets, framed for a parent: one child
+   * rather than a cohort, no classes, and no invitation to start filling in applications.
+   */
+  if (user.role === "counselor") return <RosterView mode="counselor" />;
+  if (user.role === "parent") return <RosterView mode="parent" />;
+  return <StudentConnections />;
 }
 
 /* ── the student's side ───────────────────────────────────────────────────── */
@@ -238,7 +270,7 @@ function StudentConnections() {
 
 /* ── the counselor's side ─────────────────────────────────────────────────── */
 
-function CounselorRoster() {
+function RosterView({ mode }: { mode: "counselor" | "parent" }) {
   const { user } = useAuth();
   const [students, setStudents] = useState<LinkedStudent[]>([]);
   const [email, setEmail] = useState("");
@@ -276,9 +308,20 @@ function CounselorRoster() {
     <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
       {/* groups, then invite + roster */}
       <div>
-        <CounselorGroups onOpenStudent={openStudent} />
-        <hr className="my-10 border-line" />
-        <Eyebrow>invite a student</Eyebrow>
+        {/* a class is a cohort tool — a parent has one child, not a roster to manage */}
+        {mode === "counselor" && (
+          <>
+            <CounselorGroups onOpenStudent={openStudent} />
+            <hr className="my-10 border-line" />
+          </>
+        )}
+        <Eyebrow>{mode === "parent" ? "ask your child to share" : "invite a student"}</Eyebrow>
+        {mode === "parent" && (
+          <p className="mt-3 text-sm leading-relaxed text-fog">
+            Enter your child&rsquo;s email and they will get a request. Nothing is visible until they
+            accept it, and either of you can end it at any time.
+          </p>
+        )}
         <form
           className="mt-4 flex gap-2"
           onSubmit={async (e) => {
@@ -297,7 +340,7 @@ function CounselorRoster() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="student@example.com"
+            placeholder={mode === "parent" ? "your child's email address" : "student@example.com"}
           />
           <button
             type="submit"
@@ -309,11 +352,13 @@ function CounselorRoster() {
         </form>
         {msg && <p className="mt-2 text-xs leading-relaxed text-amber">{msg}</p>}
 
-        <Eyebrow>my students</Eyebrow>
+        <Eyebrow>{mode === "parent" ? "sharing with me" : "my students"}</Eyebrow>
         <ul className="mt-4 space-y-2">
           {students.length === 0 && (
             <li className="rounded-xl border border-dashed border-line2 p-5 text-sm text-fog">
-              no students linked yet — send the first invite above.
+              {mode === "parent"
+                ? "nobody has accepted yet — send the request above and your child will see it when they sign in."
+                : "no students linked yet — send the first invite above."}
             </li>
           )}
           {students.map((s) => (
@@ -358,8 +403,9 @@ function CounselorRoster() {
         <Eyebrow>workspace</Eyebrow>
         {!open && (
           <p className="mt-4 rounded-xl border border-dashed border-line2 p-6 text-sm text-fog">
-            select a student to review their profile, university lists, deadlines and scores. This
-            view is read-only.
+            {mode === "parent"
+              ? "Choose your child above to see their progress: what is still to do, the next deadline, and where each application stands. Read-only — you cannot change anything here, and neither can we."
+              : "select a student to review their profile, university lists, deadlines and scores. This view is read-only."}
           </p>
         )}
         {open && !openData && <p className="mt-4 text-sm text-dim">loading…</p>}

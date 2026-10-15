@@ -39,6 +39,64 @@ const isUnconfirmed = (message: string, code?: string) =>
  * the project's "Confirm email" setting, which is server-side: `signUp` reports
  * which of the two happened rather than this layer assuming one.
  */
+let authInflight: Promise<AuthUser | null> | null = null;
+
+/**
+ * The signed-in user, resolved once and shared by the whole app.
+ *
+ * Both the UI (this hook) and the data layer (`workspace-sync`'s `uid`) need to know who
+ * is signed in, and each used to ask Supabase separately. Two concurrent `getUser()` calls
+ * can race the same token refresh and the loser is told there is no user — which is how a
+ * signed-in parent's student list came back empty while the page header, from the other
+ * call, knew their role. Everything now awaits this one promise.
+ */
+export function currentAuthUser(): Promise<AuthUser | null> {
+  if (!authInflight) {
+    authInflight = resolveAuthUser().finally(() => {
+      authInflight = null;
+    });
+  }
+  return authInflight;
+}
+
+/** Resolve the signed-in user once, including their role from the profile table. */
+async function resolveAuthUser(): Promise<AuthUser | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  const { data } = await sb.auth.getUser();
+  if (!data.user) return null;
+
+  const meta = (data.user.user_metadata ?? {}) as { full_name?: string; role?: string };
+  const intended = asRole(meta.role);
+
+  // Idempotent: creates the profile the first time, no-ops afterwards. Falls back to a
+  // plain read so a missing RPC (schema not applied yet) degrades into "signed in,
+  // default role" instead of an error screen.
+  let role = intended;
+  let fullName = meta.full_name ?? "";
+
+  const { data: prof, error: rpcError } = await sb.rpc("ah_ensure_profile", {
+    p_full_name: fullName,
+    p_role: intended,
+  });
+  if (rpcError) {
+    const { data: row } = await sb
+      .from("ah_profiles")
+      .select("role, full_name")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    if (row) {
+      role = asRole(row.role);
+      fullName = row.full_name ?? fullName;
+    }
+  } else if (prof) {
+    role = asRole(prof.role);
+    fullName = prof.full_name ?? fullName;
+  }
+
+  return { id: data.user.id, email: data.user.email ?? "", role, fullName };
+}
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,47 +105,12 @@ export function useAuth() {
   const [needsConfirmation, setNeedsConfirmation] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const sb = supabase();
-    if (!sb) {
+    if (!supabase()) {
       setLoading(false);
       return;
     }
-    const { data } = await sb.auth.getUser();
-    if (!data.user) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
-    const meta = (data.user.user_metadata ?? {}) as { full_name?: string; role?: string };
-    const intended = asRole(meta.role);
-
-    // Idempotent: creates the profile the first time, no-ops afterwards. Falls
-    // back to a plain read so a missing RPC (schema not applied yet) degrades
-    // into "signed in, default role" instead of an error screen.
-    let role = intended;
-    let fullName = meta.full_name ?? "";
-
-    const { data: prof, error: rpcError } = await sb.rpc("ah_ensure_profile", {
-      p_full_name: fullName,
-      p_role: intended,
-    });
-    if (rpcError) {
-      const { data: row } = await sb
-        .from("ah_profiles")
-        .select("role, full_name")
-        .eq("id", data.user.id)
-        .maybeSingle();
-      if (row) {
-        role = asRole(row.role);
-        fullName = row.full_name ?? fullName;
-      }
-    } else if (prof) {
-      role = asRole(prof.role);
-      fullName = prof.full_name ?? fullName;
-    }
-
-    setUser({ id: data.user.id, email: data.user.email ?? "", role, fullName });
+    const resolved = await currentAuthUser();
+    setUser(resolved);
     setLoading(false);
   }, []);
 
