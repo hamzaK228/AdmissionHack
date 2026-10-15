@@ -75,7 +75,7 @@ export default function SignInPage() {
         </div>
 
         <div className="order-1 lg:order-2">
-          <AuthPanel />
+          <AuthPanel next="/dashboard" />
           <p className="mt-4 text-xs leading-relaxed text-dim">
             A counselor signing up should pick the <strong className="text-fog">counselor</strong> role on
             the sign-up form, then read the{" "}

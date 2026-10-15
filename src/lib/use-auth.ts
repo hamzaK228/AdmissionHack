@@ -143,6 +143,35 @@ export function useAuth() {
     return { ok: true, needsConfirmation, alreadyRegistered };
   };
 
+  /**
+   * Sign in with an external provider.
+   *
+   * The provider is configured on the SHARED project, so enabling Google for one
+   * product enables it for both — which is why this needs no per-app setup, only the
+   * origin being allowed in the project's redirect list.
+   *
+   * `redirectTo` must be an absolute origin that is allow-listed, or GoTrue silently
+   * substitutes Site URL and the student lands on the other product's domain. The
+   * page navigates away, so there is nothing to await beyond the error case.
+   */
+  const signInWithProvider = async (
+    provider: "google" | "facebook" | "github",
+    next = "/dashboard",
+  ): Promise<AuthResult> => {
+    const sb = supabase();
+    if (!sb) return { ok: false, error: "backend not configured" };
+    setError(null);
+    const { error } = await sb.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: typeof location !== "undefined" ? `${location.origin}${next}` : undefined,
+      },
+    });
+    if (!error) return { ok: true };
+    setError(error.message);
+    return { ok: false, error: error.message };
+  };
+
   const signIn = async (email: string, password: string): Promise<AuthResult> => {
     const sb = supabase();
     if (!sb) return { ok: false, error: "backend not configured" };
@@ -212,6 +241,7 @@ export function useAuth() {
     needsConfirmation,
     configured: isSupabaseConfigured,
     signIn,
+    signInWithProvider,
     signUp,
     signOut,
     resendConfirmation,

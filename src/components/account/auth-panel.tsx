@@ -16,6 +16,41 @@ const ROLES = [
   { id: "parent", label: "parent", desc: "I'm supporting one" },
 ] as const;
 
+/**
+ * The external providers, all of which are already enabled on the shared project.
+ *
+ * Deliberately text-and-dot rather than logos: official "Sign in with Google" button
+ * assets are required for production and they are not mine to draw, so this is the
+ * honest placeholder — swap in the real assets before launch rather than a hand-drawn
+ * approximation of someone's trademark.
+ */
+const PROVIDERS = [
+  { id: "google", label: "Google", brand: "#4285F4" },
+  { id: "facebook", label: "Facebook", brand: "#1877F2" },
+  { id: "github", label: "GitHub", brand: "#8B949E" },
+] as const;
+
+/**
+ * GoTrue's errors are accurate and unhelpful. Two of them are worth translating,
+ * because they describe situations the student cannot guess at:
+ *
+ *   * "Invalid login credentials" is what a student sees when they signed up with
+ *     Google and are now typing a password that never existed. The fix is a different
+ *     button, not a different password — and without this they conclude the site is broken.
+ *   * an address that is not confirmed is a different problem from a wrong password.
+ */
+const friendlyError = (raw: string): string => {
+  if (/invalid login credentials/i.test(raw))
+    return "That email and password do not match. If you created your account with Google, Facebook or GitHub, use that button above — those accounts have no password to type. Otherwise try “forgot password”.";
+  if (/email not confirmed/i.test(raw))
+    return "That address has not been confirmed yet. Check your inbox for the link, or resend it below.";
+  if (/rate limit|too many requests|over_email_send_rate_limit/i.test(raw))
+    return "Too many attempts in a row. Wait a minute and try again.";
+  if (/user already registered/i.test(raw))
+    return "That email already has an account. Sign in instead — or use “forgot password” if you never set one.";
+  return raw;
+};
+
 type Msg = { tone: "ok" | "err"; text: string } | null;
 
 /**
@@ -28,13 +63,14 @@ type Msg = { tone: "ok" | "err"; text: string } | null;
  * "not confirmed" and "wrong password" are different problems and only one of
  * them is fixed by typing the password again.
  */
-export function AuthPanel() {
+export function AuthPanel({ next }: { next?: string } = {}) {
   const {
     user,
     loading,
     configured,
     needsConfirmation,
     signIn,
+    signInWithProvider,
     signUp,
     signOut,
     resendConfirmation,
@@ -127,9 +163,18 @@ export function AuthPanel() {
           )}
         </form>
 
-        <button type="button" onClick={signOut} className={`${quietBtn} mt-5`}>
-          sign out
-        </button>
+        {/* the next step, because "signed in" is not an outcome — reaching the workspace is */}
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-5">
+          <Link
+            href="/dashboard"
+            className="anim-glow rounded-lg bg-lime px-4 py-2 text-xs font-bold text-ink press-grow"
+          >
+            open your dashboard →
+          </Link>
+          <button type="button" onClick={signOut} className={quietBtn}>
+            sign out
+          </button>
+        </div>
       </div>
     );
   }
@@ -147,6 +192,36 @@ export function AuthPanel() {
       <Eyebrow>{title}</Eyebrow>
       <p className="mt-3 text-sm leading-relaxed text-fog">{blurb}</p>
 
+      {mode !== "reset" && (
+        <div className="mt-5 space-y-2">
+          {PROVIDERS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setMsg(null);
+                const res = await signInWithProvider(p.id, next);
+                setBusy(false);
+                if (!res.ok) setMsg({ tone: "err", text: friendlyError(res.error) });
+              }}
+              className="flex w-full items-center gap-3 rounded-lg border border-line bg-ink px-4 py-2.5 text-sm font-bold text-paper transition-colors hover:border-lime/50 disabled:opacity-40"
+            >
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: p.brand }}
+              />
+              Continue with {p.label}
+            </button>
+          ))}
+          <p className="pt-1 text-center text-[11px] uppercase tracking-wider text-dim">
+            or use an email address
+          </p>
+        </div>
+      )}
+
       <form
         className="mt-5 space-y-4"
         onSubmit={async (e) => {
@@ -159,7 +234,7 @@ export function AuthPanel() {
             setMsg(
               res.ok
                 ? { tone: "ok", text: "if that address has an account, a reset link is on its way." }
-                : { tone: "err", text: res.error },
+                : { tone: "err", text: friendlyError(res.error) },
             );
             return;
           }
@@ -168,7 +243,8 @@ export function AuthPanel() {
               ? await signIn(email, password)
               : await signUp(email, password, role, name);
           setBusy(false);
-          if (!res.ok) setMsg({ tone: "err", text: res.error });
+          if (!res.ok) setMsg({ tone: "err", text: friendlyError(res.error) });
+          else if (mode === "signin" && next) window.location.assign(next);
           else if (mode === "signup" && res.alreadyRegistered) {
             setMsg({
               tone: "err",

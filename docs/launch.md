@@ -56,6 +56,25 @@ provider unblocks deadline reminders**, the last unbuilt item of the plan's firs
 **Confirmation is ON** (`mailer_autoconfirm: false`), which is fine and working — a new student does have to
 click a link, and the links do arrive.
 
+### Social sign-in is already configured — nothing to set up
+
+Reading the project's auth settings shows **Google, Facebook and GitHub are already enabled** — they were
+switched on for the other product, and because the project is shared, both apps get them. So there is no
+OAuth app to create and no client secret to paste; the buttons on `/signin` work as soon as the origin is
+allow-listed.
+
+**The one setting to check:** Authentication → URL Configuration → **Redirect URLs** must cover the deployed
+origin *with a path*, because the app asks GoTrue to return to
+`https://admissionhack-seven.vercel.app/dashboard`. A bare origin entry may not match a path, so use the
+wildcard form — `https://admissionhack-seven.vercel.app/**` — or add the full URL. If it is missing, GoTrue
+does not error: it silently substitutes **Site URL**, and the student lands on the other product's domain
+after signing in with Google.
+
+**And to be precise about "one account":** both products authenticate against the same project, so the
+account pool is shared — one Google sign-in works on both, and a student who signed up on the other site
+already has an account here. What is *not* shared is the browser session: Supabase stores it per origin, so
+signing in on one site does not light up the other. Same credentials, same data, two sessions.
+
 ## Blocker 2 — the legal placeholders are visible on the live site
 
 `/privacy` and `/terms` name `[LEGAL ENTITY NAME]`, `[REGISTERED ADDRESS]` and `[CONTACT EMAIL]` in
