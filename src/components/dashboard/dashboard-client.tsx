@@ -17,6 +17,7 @@ import { RequirementChecker } from "@/components/dashboard/requirement-checker";
 import { ArrivalTimeline } from "@/components/dashboard/arrival-timeline";
 import { Advisor } from "@/components/dashboard/advisor";
 import { Translations } from "@/components/dashboard/translations";
+import { PersonalEarth } from "@/components/globe/personal-earth";
 import { Community } from "@/components/dashboard/community";
 import { downloadIcs } from "@/lib/calendar-export";
 import { motion, AnimatePresence } from "motion/react";
@@ -569,6 +570,7 @@ const TABS = [
   { id: "overview", label: "overview" },
   { id: "match", label: "match ⚡" },
   { id: "universities", label: "universities" },
+  { id: "earth", label: "my earth 🌍" },
   { id: "deadlines", label: "deadlines" },
   { id: "roadmap", label: "timeline ⏱" },
   { id: "offers", label: "decisions 🎓" },
@@ -695,6 +697,7 @@ export function DashboardClient({
         {tab === "overview" && <OverviewTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "match" && <MatchTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "universities" && <CollegeList uniIndex={uniIndex} />}
+        {tab === "earth" && <PersonalEarth uniIndex={uniIndex} />}
         {tab === "roadmap" && <RoadmapTab onGo={(t) => setTab(t as TabId)} />}
         {tab === "offers" && (
           <>
