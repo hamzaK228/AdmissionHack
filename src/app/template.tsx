@@ -1,34 +1,26 @@
-"use client";
-
-import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
 /**
  * Route transition.
  *
- * The outgoing page is replaced instantly by Next, so the work here is making
- * the incoming page's arrival read as deliberate rather than abrupt: a short
- * rise and fade, under 400ms, honouring the OS motion setting.
+ * The outgoing page is replaced instantly by Next, so the work here is making the
+ * incoming page's arrival read as deliberate rather than abrupt: a short rise and fade,
+ * under 400ms, honouring the OS motion setting. The keyframes live in `globals.css`.
  *
- * This used to animate `filter: blur(6px) → blur(0px)` to blend the swap, and
- * that was the wrong trade. A filter animation on the page root forces a full
- * raster and blur of the entire subtree on every frame of the transition, and
- * because the animated value ends at `blur(0px)` rather than `none`, motion
- * leaves that filter on the page root as an inline style — so every page kept a
- * filter pass and its own compositing layer for the entire session, long after
- * the 340ms it was for. Opacity and transform get the same arrival for free on
- * the compositor and cost nothing when the transition is over.
+ * Two things were deliberately taken out of this file, and both for the same reason —
+ * a page whose visibility depends on JavaScript is a page that can disappear:
+ *
+ *  1. **The animation is CSS, not motion.** A JS entrance starts the page at
+ *     `opacity: 0` and lifts it on requestAnimationFrame, so while the main thread is
+ *     busy the content stays invisible — exactly when a slow machine is loading a heavy
+ *     dashboard. The compositor drives a CSS opacity/transform animation, so it finishes
+ *     on schedule no matter what the main thread is doing.
+ *  2. **It animated `filter: blur()`, which is gone.** A filter animation on the page
+ *     root forces a full-page raster and blur on every frame, and because the animated
+ *     value ended at `blur(0px)` rather than `none`, motion left that filter on the page
+ *     root as an inline style — so every page kept a filter pass and its own compositing
+ *     layer for the whole session. Opacity and transform give the same arrival for free.
  */
 export default function Template({ children }: { children: ReactNode }) {
-  const reduce = useReducedMotion();
-  if (reduce) return <>{children}</>;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className="page-enter">{children}</div>;
 }

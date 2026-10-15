@@ -26,10 +26,46 @@ import {
 import { DOC_FOLDERS } from "@/data/document-folders";
 import { CHECKLIST } from "@/data/document-checklist";
 import { universityBySlug } from "@/data/directory";
+import { isOpen, statusOf, statusSpec } from "@/lib/applications";
+import { STATUS_TONE } from "@/components/dashboard/college-list";
 
 /** The checklist's own wording, so a counselor reads the same words as the student. */
 const docLabel = (key: string) =>
   CHECKLIST.find((c) => c.id === key)?.label.replace(/\s*\(.*\)$/, "") ?? key;
+
+/** The student's own tier names, so nobody has to translate "dream" in their head. */
+const TIER_LABEL: Record<string, string> = { dream: "Dream", target: "Target", safe: "Safe" };
+
+/**
+ * What a counselor should look at, derived from the workspace that is already loaded.
+ *
+ * The workspace below is seven sections deep, and a counselor opening it cold had to
+ * read all of them to find out whether anything was wrong. This is the same data
+ * reduced to the things that actually want a human: applications nobody has sent,
+ * deadlines close enough to matter, a report nobody has checked, a translation still at
+ * the translator, folders the student has not touched.
+ *
+ * Everything here is computed from data already in memory — no extra query, and nothing
+ * that could disagree with the sections it summarises.
+ */
+const SOON_DAYS = 45;
+
+function attentionFor(data: SyncPayload, docs: CloudFile[], reports: CloudReport[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const open = data.universities.filter((u) => isOpen(statusOf(u)));
+  const soon = data.deadlines
+    .map((d) => ({
+      ...d,
+      days: Math.round((new Date(d.date + "T00:00:00").getTime() - today.getTime()) / 86_400_000),
+    }))
+    .filter((d) => d.days >= 0 && d.days <= SOON_DAYS)
+    .sort((a, b) => a.days - b.days);
+  const unverified = reports.filter((r) => !r.isVerified).length;
+  const translationsOut = Object.values(data.translations ?? {}).filter((t) => t.state !== "received").length;
+  const untouched = DOC_FOLDERS.filter((f) => !docs.some((d) => d.folder === f.id));
+  return { open, soon, unverified, translationsOut, untouched };
+}
 
 const inputCls =
   "w-full rounded-lg border border-line bg-ink px-3.5 py-2.5 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-lime/60";
@@ -214,6 +250,8 @@ function CounselorRoster() {
     if (user) refresh();
   }, [user, refresh]);
 
+  const attention = openData ? attentionFor(openData, docs, reports) : null;
+
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
       {/* groups, then invite + roster */}
@@ -323,8 +361,74 @@ function CounselorRoster() {
               </p>
             </div>
 
+            {attention && (
+              <div className="rounded-2xl border border-lime/30 bg-lime/[0.04] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-lime">needs attention</p>
+                <ul className="mt-3 space-y-2 text-xs leading-relaxed">
+                  {attention.open.length > 0 && (
+                    <li className="text-fog">
+                      <span className="font-bold text-paper">
+                        {attention.open.length} application{attention.open.length === 1 ? "" : "s"}
+                      </span>{" "}
+                      still to send —{" "}
+                      {attention.open
+                        .slice(0, 3)
+                        .map((u) => universityBySlug(u.slug)?.name ?? u.slug.replace(/-/g, " "))
+                        .join(", ")}
+                      {attention.open.length > 3 && ` and ${attention.open.length - 3} more`}
+                    </li>
+                  )}
+                  {attention.soon.length > 0 && (
+                    <li className="text-fog">
+                      <span className="font-bold text-paper">
+                        {attention.soon[0].days === 0
+                          ? "Due today"
+                          : attention.soon[0].days === 1
+                            ? "Due tomorrow"
+                            : `Due in ${attention.soon[0].days} days`}
+                      </span>{" "}
+                      — {attention.soon[0].title}
+                      {attention.soon.length > 1 && `, and ${attention.soon.length - 1} more within ${SOON_DAYS} days`}
+                    </li>
+                  )}
+                  {attention.unverified > 0 && (
+                    <li className="text-fog">
+                      <span className="font-bold text-paper">
+                        {attention.unverified} score report{attention.unverified === 1 ? "" : "s"}
+                      </span>{" "}
+                      not checked — the scores below stay unverified until you compare the document.
+                    </li>
+                  )}
+                  {attention.translationsOut > 0 && (
+                    <li className="text-fog">
+                      <span className="font-bold text-paper">
+                        {attention.translationsOut} translation{attention.translationsOut === 1 ? "" : "s"}
+                      </span>{" "}
+                      not in hand yet — worth chasing before an application looks complete on paper.
+                    </li>
+                  )}
+                  {attention.untouched.length > 0 && (
+                    <li className="text-fog">
+                      <span className="font-bold text-paper">Folders with nothing in them:</span>{" "}
+                      {attention.untouched.map((f) => f.label).join(", ")}
+                    </li>
+                  )}
+                  {attention.open.length === 0 &&
+                    attention.soon.length === 0 &&
+                    attention.unverified === 0 &&
+                    attention.translationsOut === 0 &&
+                    attention.untouched.length === 0 && (
+                      <li className="text-fog">
+                        Nothing outstanding — every application has been sent, nothing is due in the next{" "}
+                        {SOON_DAYS} days, and every report has been checked.
+                      </li>
+                    )}
+                </ul>
+              </div>
+            )}
+
             <section>
-              <Eyebrow>universities</Eyebrow>
+              <Eyebrow>universities · {openData.universities.length}</Eyebrow>
               <ul className="mt-3 space-y-1.5">
                 {openData.universities.length === 0 && (
                   <li className="text-sm text-dim">none shortlisted</li>
@@ -333,24 +437,26 @@ function CounselorRoster() {
                   const day = (iso: string) =>
                     new Date(iso + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short" });
                   const name = universityBySlug(u.slug)?.name ?? u.slug.replace(/-/g, " ");
+                  const spec = statusSpec(statusOf(u));
                   return (
                     <li
                       key={u.slug}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2 text-xs"
+                      className={`flex items-center justify-between gap-3 rounded-lg border bg-ink px-3 py-2 text-xs ${STATUS_TONE[spec.tone].edge}`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-paper">{name}</span>
-                        {(u.submittedOn || u.decidedOn) && (
-                          <span className="text-[10px] text-dim">
-                            {u.submittedOn && <>submitted {day(u.submittedOn)}</>}
-                            {u.submittedOn && u.decidedOn && " · "}
-                            {u.decidedOn && <>decided {day(u.decidedOn)}</>}
-                          </span>
-                        )}
+                        <span className="text-[10px] text-dim">
+                          {TIER_LABEL[u.tier] ?? u.tier}
+                          {(u.submittedOn || u.decidedOn) && " · "}
+                          {u.submittedOn && <>sent {day(u.submittedOn)}</>}
+                          {u.submittedOn && u.decidedOn && " · "}
+                          {u.decidedOn && <>decided {day(u.decidedOn)}</>}
+                        </span>
                       </span>
-                      <span className="shrink-0 text-right">
-                        <span className="block text-lime">{u.tier}</span>
-                        {u.status && <span className="text-[10px] text-fog">{u.status}</span>}
+                      {/* the student's own status vocabulary, and the same colours their
+                          college list uses, so the two screens can be read together */}
+                      <span className={`shrink-0 text-right text-[11px] font-bold ${STATUS_TONE[spec.tone].text}`}>
+                        {spec.short}
                       </span>
                     </li>
                   );
@@ -359,7 +465,7 @@ function CounselorRoster() {
             </section>
 
             <section>
-              <Eyebrow>scores</Eyebrow>
+              <Eyebrow>scores · {Object.keys(openData.exams).length}</Eyebrow>
               <ul className="mt-3 space-y-1.5">
                 {Object.entries(openData.exams).length === 0 && (
                   <li className="text-sm text-dim">none recorded</li>
@@ -383,7 +489,7 @@ function CounselorRoster() {
             </section>
 
             <section>
-              <Eyebrow>translations</Eyebrow>
+              <Eyebrow>translations · {Object.keys(openData.translations ?? {}).length}</Eyebrow>
               {Object.keys(openData.translations ?? {}).length === 0 ? (
                 <p className="mt-3 text-sm text-dim">
                   nothing tracked — sworn translations are only needed when a document is not in the language
@@ -426,7 +532,7 @@ function CounselorRoster() {
             </section>
 
             <section>
-              <Eyebrow>portfolio</Eyebrow>
+              <Eyebrow>portfolio · {openData.portfolio.length}</Eyebrow>
               <ul className="mt-3 space-y-2">
                 {openData.portfolio.length === 0 && (
                   <li className="text-sm text-dim">
@@ -464,7 +570,7 @@ function CounselorRoster() {
             </section>
 
             <section>
-              <Eyebrow>deadlines</Eyebrow>
+              <Eyebrow>deadlines · {openData.deadlines.length}</Eyebrow>
               <ul className="mt-3 space-y-1.5">
                 {openData.deadlines.length === 0 && (
                   <li className="text-sm text-dim">none tracked</li>
@@ -481,7 +587,7 @@ function CounselorRoster() {
               </ul>
             </section>
             <section>
-              <Eyebrow>documents</Eyebrow>
+              <Eyebrow>documents · {docs.length}</Eyebrow>
               <ul className="mt-3 space-y-3">
                 {docs.length === 0 && (
                   <li className="text-sm text-dim">
@@ -520,7 +626,7 @@ function CounselorRoster() {
             </section>
 
             <section>
-              <Eyebrow>official reports</Eyebrow>
+              <Eyebrow>official reports · {reports.length}</Eyebrow>
               <ul className="mt-3 space-y-1.5">
                 {reports.length === 0 && (
                   <li className="text-sm text-dim">

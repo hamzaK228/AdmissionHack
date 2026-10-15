@@ -26,8 +26,12 @@ const TIERS: { id: Tier; label: string; icon: string; want: string; wantMax: num
   { id: "safe", label: "Safe", icon: "🛡️", want: "2", wantMax: 3, accent: "text-mint", hint: "very likely admits" },
 ];
 
-/** Status colour, one place, so the card edge, the control and the summary agree. */
-const TONE: Record<StatusTone, { edge: string; text: string }> = {
+/**
+ * Status colour, one place, so the card edge, the control and the summary agree —
+ * and the counselor's screen imports this same map instead of inventing a second
+ * palette for the same seven states.
+ */
+export const STATUS_TONE: Record<StatusTone, { edge: string; text: string }> = {
   idle: { edge: "border-line", text: "text-dim" },
   work: { edge: "border-lime/40", text: "text-lime" },
   waiting: { edge: "border-amber/40", text: "text-amber" },
@@ -50,7 +54,7 @@ function AppCard({ u, app }: { u: SlimUni; app: AppEntry }) {
       layoutId={app.slug}
       data-app={app.slug}
       transition={{ type: "spring", stiffness: 380, damping: 34 }}
-      className={`rounded-xl border bg-ink p-3 ${TONE[spec.tone].edge}`}
+      className={`rounded-xl border bg-ink p-3 ${STATUS_TONE[spec.tone].edge}`}
     >
       <div className="flex items-start justify-between gap-2">
         <Link href={`/universities/${u.slug}`} className="min-w-0 group">
@@ -105,7 +109,7 @@ function AppCard({ u, app }: { u: SlimUni; app: AppEntry }) {
           id={`st-${app.slug}`}
           value={status}
           onChange={(e) => setStatus(u.slug, e.target.value as (typeof APP_STATUSES)[number])}
-          className={`mt-1 w-full rounded-lg border bg-panel px-2 py-1.5 text-xs outline-none focus:border-lime/60 ${TONE[spec.tone].edge} ${TONE[spec.tone].text}`}
+          className={`mt-1 w-full rounded-lg border bg-panel px-2 py-1.5 text-xs outline-none focus:border-lime/60 ${STATUS_TONE[spec.tone].edge} ${STATUS_TONE[spec.tone].text}`}
         >
           {APP_STATUSES.map((s) => {
             const sp = statusSpec(s);

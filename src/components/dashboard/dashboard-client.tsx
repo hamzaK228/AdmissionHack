@@ -20,7 +20,6 @@ import { Translations } from "@/components/dashboard/translations";
 import { PersonalEarth } from "@/components/globe/personal-earth";
 import { Community } from "@/components/dashboard/community";
 import { downloadIcs } from "@/lib/calendar-export";
-import { motion, AnimatePresence } from "motion/react";
 import { CountUp } from "@/components/motion/count-up";
 import type { SlimUni } from "@/lib/match-engine";
 import { DocumentFolders } from "@/components/dashboard/document-folders";
@@ -686,14 +685,20 @@ export function DashboardClient({
       </div>
 
       <div className="mt-10">
-        <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.25 }}
-        >
+        {/**
+         * The panel is keyed by tab so the entrance replays on every switch, and it is a
+         * CSS animation rather than a JS one.
+         *
+         * It used to be `AnimatePresence mode="wait"` fading the old panel out before
+         * mounting the new one, and that is a blank screen waiting to happen: a JS fade has
+         * to be driven by the main thread, and the tab most likely to be saturating the
+         * main thread is this one — the earth builds a 41,000-dot canvas and 1,500 arcs on
+         * its first paint. When the exit animation stalled, `mode="wait"` never mounted the
+         * incoming panel at all, so clicking "my earth" showed nothing. A CSS opacity and
+         * transform runs on the compositor and lands on schedule whatever the main thread
+         * is doing.
+         */}
+        <div key={tab} className="page-enter">
         {tab === "overview" && <OverviewTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "match" && <MatchTab uniIndex={uniIndex} onGo={(t) => setTab(t as TabId)} />}
         {tab === "universities" && <CollegeList uniIndex={uniIndex} />}
@@ -843,8 +848,7 @@ export function DashboardClient({
             </div>
           </div>
         )}
-        </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
     </div>
   );

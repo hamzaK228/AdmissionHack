@@ -114,7 +114,17 @@ export interface TrackedApp {
 }
 
 /** An entry with no status predates the tracker: treat it as still being planned. */
-export const statusOf = (app: TrackedApp): AppStatus => (isAppStatus(app.status) ? app.status : "planning");
+/**
+ * A row's status, defaulted and validated.
+ *
+ * The parameter is deliberately loose: statuses arrive from `localStorage` and from the
+ * workspace a counselor loads out of Postgres, where the column is a plain `text` — so
+ * the value has to be checked at runtime rather than trusted from a type. An unknown or
+ * missing status reads as `planning`, which is both the first step and the honest
+ * assumption.
+ */
+export const statusOf = (app: { status?: unknown }): AppStatus =>
+  isAppStatus(app.status) ? app.status : "planning";
 
 const OUTCOMES: readonly AppStatus[] = ["offer", "waitlisted", "rejected", "enrolled"];
 

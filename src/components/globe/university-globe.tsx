@@ -384,20 +384,46 @@ export function UniversityGlobe({ onSelect, initialRotation = -2.1, className = 
       ctx.fillStyle = limb;
       ctx.fill();
 
-      // hovered university
+      /**
+       * The hovered university, marked with its own logo.
+       *
+       * Hovering a dot used to draw a bare ring, which told you *that* you had found
+       * something but not *what* — and the label beside it had to do all the work. The
+       * card is the same language the cursor trail already speaks: white, because the
+       * marks most universities have are dark (Harvard crimson, ETH black, Cambridge
+       * blue) and those vanish against a near-black globe.
+       *
+       * A university we hold no mark for keeps its initials rather than a fabricated
+       * logo, which is also the answer if anyone asks us to remove a mark.
+       */
       const hv = hoverRef.current;
       if (hv) {
         const p = project(hv.lat, hv.lng, cx, cy, R);
         if (p) {
+          const logo = logoFor(UNIVERSITY_LOGOS[hv.name]);
+          const rad = 15;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(201,255,74,0.95)";
-          ctx.lineWidth = 1.4;
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = "#c9ff4a";
+          ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+          ctx.fillStyle = logo ? "rgba(255,255,255,0.97)" : "rgba(4,7,6,0.9)";
           ctx.fill();
+          if (logo) {
+            ctx.save();
+            ctx.clip();
+            const side = rad * 1.5;
+            ctx.drawImage(logo, p.x - side / 2, p.y - side / 2, side, side);
+            ctx.restore();
+          } else {
+            ctx.fillStyle = "rgba(201,255,74,0.95)";
+            ctx.font = "bold 12px ui-monospace, SFMono-Regular, monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(markFor(hv.name), p.x, p.y + 0.5);
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(201,255,74,0.95)";
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
         }
       }
 

@@ -71,12 +71,23 @@ export interface RouteInput {
   country: string;
   lat: number;
   lng: number;
+  /** the directory slug, when the caller has one — carried through for keys and links */
+  slug?: string;
 }
 
 export interface Route extends RouteInput {
   /** the SVG path for the arc, in the same pixel space as the globe */
   d: string;
   end: Projected;
+  /**
+   * True when the destination itself is on the far side of the globe.
+   *
+   * `end` is still a usable point (it falls back to the centre of the disc, which is
+   * where a partial arc's own geometry puts it), but a marker drawn there would sit on
+   * top of the student's own location and claim a university is in their city. The
+   * caller uses this to know not to draw one.
+   */
+  behind: boolean;
   /** the on-screen point of the arc's midpoint, where a label sits best */
   mid: Projected;
   /** a short mark for the marker: "MIT", "ETH" — initials, never a fabricated logo */
@@ -127,6 +138,12 @@ export function markFor(name: string): string {
  * An arc stops at the first point that rotates out of view rather than drawing on
  * regardless: on an orthographic globe, a line that carries past the limb appears to
  * cut through the sphere, which reads as a bug rather than as depth.
+ *
+ * `lookAt` separates **where the student is** from **where the camera points**. The arcs
+ * always leave the student's own location, but the view can be turned — a global list
+ * centred strictly on home hides every destination more than 90° away, which for a
+ * Kazakhstani student is the entire United States. Centring on a university instead is
+ * how a student looks at the half of their list that was behind the planet.
  */
 export function buildRoutes(
   home: [number, number],
@@ -134,8 +151,10 @@ export function buildRoutes(
   cx: number,
   cy: number,
   radius: number,
+  lookAt?: [number, number],
 ): { routes: Route[]; camera: Camera } {
-  const camera = cameraFor(home[0], home[1]);
+  const view = lookAt ?? home;
+  const camera = cameraFor(view[0], view[1]);
   const a = toVec(home[0], home[1]);
   const routes: Route[] = [];
 
@@ -146,7 +165,19 @@ export function buildRoutes(
     const sinOmega = Math.sin(omega);
 
     const pts: string[] = [];
-    let mid: Projected | null = null;
+    /**
+     * Collect the **visible runs** rather than stopping at the first hidden point.
+     *
+     * This used to `break` the moment a point rotated out of view, which is right for the
+     * far end of an arc — a line carried past the limb appears to cut through the sphere —
+     * but wrong for the near end, because every arc *begins* at home. Turn the globe to a
+     * university on the other side of the planet and home is behind the limb, so the very
+     * first point failed, every arc was dropped, and the map went blank along with every
+     * marker on it. Skipping hidden points and keeping the longest visible run shows the
+     * part of the route that is genuinely facing the reader.
+     */
+    const runs: Projected[][] = [];
+    let run: Projected[] = [];
 
     for (let i = 0; i <= STEPS; i++) {
       const t01 = i / STEPS;
@@ -159,10 +190,19 @@ export function buildRoutes(
       v = [v[0] * lift, v[1] * lift, v[2] * lift];
 
       const p = project(v, camera, cx, cy, radius);
-      if (!p) break; // rotated past the limb — stop, do not draw through the sphere
-      pts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
-      if (p) mid = p;
+      if (!p) {
+        if (run.length > 1) runs.push(run);
+        run = [];
+        continue;
+      }
+      run.push(p);
     }
+    if (run.length > 1) runs.push(run);
+    if (runs.length === 0) continue;
+
+    const best = runs.reduce((longest, r) => (r.length > longest.length ? r : longest));
+    for (const p of best) pts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
+    const mid = best[Math.floor(best.length / 2)];
 
     if (pts.length < 2) continue;
     const end = project(b, camera, cx, cy, radius);
@@ -172,8 +212,10 @@ export function buildRoutes(
       country: t.country,
       lat: t.lat,
       lng: t.lng,
+      slug: t.slug,
       d: `M${pts.join("L")}`,
       end: end ?? { x: cx, y: cy, depth: 0.02 },
+      behind: !end,
       // the midpoint label sits at the arc's own middle, not the endpoint's
       mid: mid ?? { x: cx, y: cy, depth: 0.5 },
       mark: markFor(t.name),

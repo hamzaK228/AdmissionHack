@@ -4,29 +4,29 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { animate, createMotionPath } from "animejs";
 import { useReducedMotion } from "motion/react";
 import { useStore } from "@/components/dashboard/store";
-import { COUNTRY_COORDS } from "@/data/geo";
+import { COUNTRY_COORDS, globePoints } from "@/data/geo";
+import { UNIVERSITY_LOGOS } from "@/data/logos";
 import { LAND_W, LAND_H, landMask } from "@/data/land-mask";
-import { buildRoutes, type RouteInput } from "@/lib/routes";
+import { buildRoutes, cameraFor, markFor, project, toVec, type RouteInput } from "@/lib/routes";
 import { Eyebrow } from "@/components/ui";
 import type { SlimUni } from "@/lib/match-engine";
 
 /**
  * Your own earth: where you are, and the arcs to every university on your list.
  *
- * Two things make this different from the landing globe, and both are deliberate:
+ * Three things make this different from the landing globe, and all three are deliberate:
  *
  *  1. **It does not rotate, and it is not redrawn.** The view is centred on the
  *     student's own location, so the globe is rendered to a canvas *once* (and again
  *     only on resize), and the arcs are static SVG geometry. There is no animation
  *     frame loop anywhere in this component — the only moving things are a handful of
- *     markers, animated by anime.js along the arc paths. That is the whole performance
- *     argument: a spinning globe costs a frame loop forever, and this costs ~8 tweens.
+ *     markers, animated by anime.js along the arc paths.
  *  2. **The camera looks at you.** A globe centred on the prime meridian would put a
  *     Kazakhstani student's home near the edge and half their list behind the sphere.
  *     Centred on home, everyone they applied to radiates outward.
- *
- * The arcs are drawn along the great circle and lifted at the midpoint, which is what
- * makes a line between two dots read as a flight path rather than a chord.
+ *  3. **Every university is its own destination.** Not one marker per country: a list
+ *     of six British universities is six arcs to six places the student actually chose,
+ *     each one labelled with the institution's own mark.
  *
  * The home location is kept in this browser for now, and the page says so — the same
  * honest limit the CV builder has. Syncing it is one column away when it matters.
@@ -36,6 +36,8 @@ const VB = 1000;
 const CX = VB / 2;
 const CY = VB / 2;
 const R = VB * 0.38;
+/** marker card size in viewBox units (the viewBox is 1000 wide, whatever its pixel size) */
+const MARK = 46;
 const HOME_KEY = "ah.home";
 
 /**
@@ -56,6 +58,22 @@ const COORDS: Record<string, [number, number]> = (() => {
   return out;
 })();
 const coordsFor = (name: string): [number, number] | undefined => COORDS[name.toLowerCase()];
+
+/**
+ * Every university's own latitude and longitude, keyed by the display name.
+ *
+ * This is what changed the tab from a country map into a map of the student's list.
+ * Plotting at country centroids meant six British universities collapsed into one
+ * marker, and the initials were not even unique — Tokyo and Toronto both came out as
+ * "UT", so the picture could not be read. The directory's globe data already carries a
+ * real coordinate for every one of the 1,506 institutions; a country centroid is now
+ * only the fallback for a name the two datasets spell differently.
+ */
+const UNI_COORDS = (() => {
+  const m = new Map<string, { lat: number; lng: number }>();
+  for (const p of globePoints()) m.set(p.name, { lat: p.lat, lng: p.lng });
+  return m;
+})();
 
 /** Land dots are projected once, so this must stay cheap: ~41k points, no allocation. */
 function drawGlobe(canvas: HTMLCanvasElement, home: [number, number]) {
@@ -132,14 +150,37 @@ function drawGlobe(canvas: HTMLCanvasElement, home: [number, number]) {
   ctx.stroke();
 }
 
+interface Destination extends RouteInput {
+  slug: string;
+  rank: number | null;
+  logo?: string;
+  mark: string;
+}
+
 export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> }) {
   const { apps } = useStore();
   const reduce = useReducedMotion();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  /**
+   * The canvas lives inside a conditional, so the element appears *after* the first
+   * render — a ref read on mount finds nothing, and the width it measures would stay
+   * at zero forever, leaving the sphere undrawn and immune to resizing. Held in state
+   * so the observer attaches when the element actually exists.
+   */
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const [home, setHome] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [size, setSize] = useState(0);
+  /**
+   * Which university is highlighted, **by name rather than by index**.
+   *
+   * Indices cannot be shared between the markers and the legend: the arc builder drops
+   * a destination that has rotated behind the globe, so the routes array is not
+   * positionally aligned with the list of universities the student chose. Two numbering
+   * systems that drift apart by one is exactly how a logo ends up over the wrong
+   * university.
+   */
+  const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -160,46 +201,93 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
   };
 
   const homeCoords = home ? coordsFor(home) : undefined;
+  /**
+   * Where the camera points, held as a university name: null means "look at home".
+   *
+   * An orthographic globe can only show one hemisphere, so a view centred strictly on
+   * home hides every destination more than 90° away — for a Kazakhstani student with an
+   * American list, that is the whole list. Turning the globe to a university is how the
+   * other half comes into view, and it is a state change rather than a drag, so the
+   * canvas is still only drawn when it changes instead of every frame.
+   */
+  const [view, setView] = useState<string | null>(null);
 
-  /** The destinations: every university on the list, at its country's centroid. */
-  const targets = useMemo<RouteInput[]>(() => {
-    const seen = new Set<string>();
-    const out: RouteInput[] = [];
+  /**
+   * The destinations: the universities themselves, not the countries they sit in.
+   * Sorted by rank so the strongest appear first in the legend and the drawing order
+   * puts the best-known marks on top where they overlap.
+   */
+  const targets = useMemo<Destination[]>(() => {
+    const out: Destination[] = [];
     for (const a of apps) {
       const u = uniIndex[a.slug];
       if (!u) continue;
-      const coords = coordsFor(u.countryName);
-      if (!coords) continue;
-      // one arc per country, so a list of six UK universities is not six identical lines
-      if (seen.has(u.countryName)) continue;
-      seen.add(u.countryName);
-      out.push({ name: u.name, country: u.countryName, lat: coords[0], lng: coords[1] });
+      const own = UNI_COORDS.get(u.name);
+      const centre = coordsFor(u.countryName);
+      const lat = own?.lat ?? centre?.[0];
+      const lng = own?.lng ?? centre?.[1];
+      if (lat === undefined || lng === undefined) continue;
+      out.push({
+        slug: u.slug,
+        name: u.name,
+        country: u.countryName,
+        lat,
+        lng,
+        rank: u.qsRank,
+        logo: UNIVERSITY_LOGOS[u.name],
+        mark: markFor(u.name),
+      });
     }
-    return out;
+    return out.sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
   }, [apps, uniIndex]);
 
-  const { routes } = useMemo(
-    () => (homeCoords ? buildRoutes(homeCoords, targets, CX, CY, R) : { routes: [] }),
-    [homeCoords, targets],
+  /**
+   * The camera's target. A university name resolves through the destination list, not
+   * through the country table: those are different key sets, and looking a university up
+   * in the country table returns nothing — a globe that silently refuses to turn.
+   */
+  const viewCoords = useMemo<[number, number] | undefined>(() => {
+    if (!view) return homeCoords;
+    const t = targets.find((x) => x.name === view);
+    return t ? [t.lat, t.lng] : homeCoords;
+  }, [view, targets, homeCoords]);
+  const camera = useMemo(
+    () => (viewCoords ? cameraFor(viewCoords[0], viewCoords[1]) : null),
+    [viewCoords],
   );
 
-  // measure once, and again on resize — the canvas is the only thing that depends on it
+  const { routes } = useMemo(
+    () =>
+      homeCoords && viewCoords
+        ? buildRoutes(homeCoords, targets, CX, CY, R, viewCoords)
+        : { routes: [] },
+    [homeCoords, viewCoords, targets],
+  );
+
+  /** where the student's own dot lands — the centre only while the view is on home */
+  const homePoint = useMemo(
+    () => (camera && homeCoords ? project(toVec(homeCoords[0], homeCoords[1]), camera, CX, CY, R) : null),
+    [camera, homeCoords],
+  );
+
+  /** a route carries the geometry; the destination carries the slug, logo and rank */
+  const detail = useMemo(() => new Map(targets.map((t) => [t.name, t])), [targets]);
+
+  // measure when the element appears, and again on resize
   useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const measure = () => setSize(el.getBoundingClientRect().width);
+    if (!canvasEl) return;
+    const measure = () => setSize(canvasEl.getBoundingClientRect().width);
     measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(el);
+    ro.observe(canvasEl);
     return () => ro.disconnect();
-  }, []);
+  }, [canvasEl]);
 
-  // the globe is drawn to canvas once per (home, size). No frame loop.
+  // the globe is drawn to canvas once per (view, size). No frame loop.
   useEffect(() => {
-    const el = canvasRef.current;
-    if (!el || !homeCoords) return;
-    drawGlobe(el, homeCoords);
-  }, [homeCoords, size]);
+    if (!canvasEl || !viewCoords) return;
+    drawGlobe(canvasEl, viewCoords);
+  }, [canvasEl, viewCoords, size]);
 
   // only the markers move: one anime.js tween per route, along its own arc
   useEffect(() => {
@@ -231,6 +319,18 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
   if (!loaded) return <p className="text-sm text-dim">loading…</p>;
 
   const countries = Object.keys(COUNTRY_COORDS).sort();
+  const withLogo = targets.filter((t) => t.logo).length;
+  /**
+   * Destinations on the far side of the globe — real, just not currently facing us.
+   *
+   * Deliberately not a `useMemo`: this line sits after the early `if (!loaded)` return
+   * above, so a hook here would run on the second render but not the first, which React
+   * rejects outright ("rendered more hooks than during the previous render"). A handful
+   * of names is not worth a hook anyway.
+   */
+  const behind = new Set(routes.filter((r) => r.behind).map((r) => r.name));
+  const shown = active !== null ? routes.find((r) => r.name === active) : undefined;
+  const shownDetail = active !== null ? detail.get(active) : undefined;
 
   return (
     <div>
@@ -238,8 +338,9 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
         <div className="min-w-0">
           <Eyebrow>your own earth</Eyebrow>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-fog">
-            Every university on your list, plotted from where you are. The view is centred on your own
-            location, so the arcs radiate out from you rather than wrapping around the back of the planet.
+            Every university on your list, at its own coordinates, with an arc from where you are. The
+            view is centred on your own location, so the arcs radiate out from you rather than wrapping
+            around the back of the planet.
           </p>
         </div>
         <label className="shrink-0 text-xs text-dim">
@@ -272,54 +373,212 @@ export function PersonalEarth({ uniIndex }: { uniIndex: Record<string, SlimUni> 
         </p>
       )}
 
-      {homeCoords && (
-        <div className="relative mx-auto mt-8 aspect-square w-full max-w-[620px]">
-          <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden />
+      {homeCoords && targets.length > 0 && (
+        <>
+          {/**
+           * An orthographic globe shows one hemisphere. Rather than let a student wonder
+           * where half their list went, the view says which it is and how to turn it, and
+           * clicking a name below rotates the planet to that university.
+           */}
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs leading-relaxed text-dim">
+              {view ? (
+                <>
+                  turned to <span className="text-lime">{view}</span>
+                  {behind.size > 0 && (
+                    <>
+                      {" "}
+                      — {behind.size} {behind.size === 1 ? "university is" : "universities are"} still on the
+                      far side
+                    </>
+                  )}
+                </>
+              ) : (
+                <>centred on you — click a university below to turn the globe to it</>
+              )}
+            </p>
+            {view && (
+              <button
+                type="button"
+                onClick={() => setView(null)}
+                className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-lime transition-colors hover:border-lime/50"
+              >
+                ← back to me
+              </button>
+            )}
+          </div>
+          <div className="relative mx-auto mt-4 aspect-square w-full max-w-[620px]">
+          <canvas ref={setCanvasEl} className="absolute inset-0 h-full w-full" aria-hidden />
           <svg
             ref={svgRef}
             viewBox={`0 0 ${VB} ${VB}`}
             className="absolute inset-0 h-full w-full"
             role="img"
-            aria-label={`Earth centred on ${home}, with arcs to ${routes.length} destinations`}
+            aria-label={`Earth centred on ${home}, with arcs to ${routes.length} universities`}
           >
-            <style>{`
-              .route-arc { stroke-dasharray: 5 7; animation: route-flow 2.4s linear infinite; }
-              @keyframes route-flow { to { stroke-dashoffset: -24; } }
-              @media (prefers-reduced-motion: reduce) { .route-arc { animation: none; } }
-            `}</style>
+            <defs>
+              {/* one clip for every marker card: the shape is the same, only the position moves */}
+              <clipPath id="pe-mark-clip">
+                <circle cx={0} cy={0} r={MARK / 2 - 3} />
+              </clipPath>
+              <style>{`
+                .route-arc { stroke-dasharray: 5 7; animation: route-flow 2.4s linear infinite; }
+                @keyframes route-flow { to { stroke-dashoffset: -24; } }
+                @media (prefers-reduced-motion: reduce) { .route-arc { animation: none; } }
+              `}</style>
+            </defs>
 
             {routes.map((r, i) => (
-              <g key={`${r.country}-${i}`}>
-                <path id={`arc-${i}`} className="route-arc" d={r.d} fill="none" stroke="#c9ff4a" strokeWidth={1.4} strokeOpacity={0.5} />
+              <g key={`${r.slug}-${i}`}>
+                <path
+                  id={`arc-${i}`}
+                  className="route-arc"
+                  d={r.d}
+                  fill="none"
+                  stroke="#c9ff4a"
+                  strokeWidth={active === r.name ? 2 : 1.4}
+                  strokeOpacity={active === null || active === r.name ? 0.5 : 0.16}
+                />
                 {/* the travelling signal — the only thing animated by JS */}
                 <circle id={`pulse-${i}`} r={4} fill="#c9ff4a" opacity={0.95} />
-                {/* the destination, readable and static */}
-                <g transform={`translate(${r.end.x.toFixed(1)} ${r.end.y.toFixed(1)})`}>
-                  <circle r={17} fill="#05080a" stroke="#c9ff4a" strokeOpacity={0.6} strokeWidth={1.2} />
-                  <text textAnchor="middle" dominantBaseline="central" fill="#c9ff4a" fontSize={13} fontFamily="monospace" fontWeight="bold">
-                    {r.mark}
-                  </text>
-                </g>
               </g>
             ))}
 
-            {/* you are here */}
-            <g transform={`translate(${CX} ${CY})`}>
-              <circle r={26} fill="none" stroke="#c9ff4a" strokeOpacity={0.35} strokeWidth={1} />
-              <circle r={5} fill="#c9ff4a" />
-              <text y={44} textAnchor="middle" fill="#c9ff4a" fontSize={12} fontFamily="monospace">
-                you · {home}
-              </text>
-            </g>
+            {/* destinations: the university's own mark on a white card, the same language
+                the landing globe's cursor trail uses. White is what makes a dark badge
+                (Harvard crimson, ETH black, Cambridge blue) legible on a dark globe. */}
+            {routes.map((r, i) => {
+              // A destination on the far side gets no marker. Its `end` falls back to the
+              // centre of the disc, so drawing one would park a university's logo on the
+              // student's own dot and claim it sits in their city.
+              if (r.behind) return null;
+              const t = detail.get(r.name);
+              const on = active === r.name;
+              const dim = active !== null && !on;
+              return (
+                <g
+                  key={`mark-${r.slug}-${i}`}
+                  transform={`translate(${r.end.x.toFixed(1)} ${r.end.y.toFixed(1)})`}
+                  opacity={dim ? 0.4 : 1}
+                  onPointerEnter={() => setActive(r.name)}
+                  onPointerLeave={() => setActive(null)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <circle
+                    r={on ? MARK / 2 + 4 : MARK / 2}
+                    fill="#ffffff"
+                    stroke="#c9ff4a"
+                    strokeOpacity={on ? 0.95 : 0.55}
+                    strokeWidth={on ? 2.4 : 1.2}
+                  />
+                  {t?.logo ? (
+                    <image
+                      href={t.logo}
+                      x={-MARK / 2 + 5}
+                      y={-MARK / 2 + 5}
+                      width={MARK - 10}
+                      height={MARK - 10}
+                      clipPath="url(#pe-mark-clip)"
+                      preserveAspectRatio="xMidYMid meet"
+                    />
+                  ) : (
+                    // no vendored mark for this one — initials, never a fabricated logo
+                    <text
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="#0a0f0c"
+                      fontSize={15}
+                      fontFamily="ui-monospace, monospace"
+                      fontWeight="bold"
+                    >
+                      {t?.mark ?? r.mark}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* you are here — projected, because it only sits at the centre while the
+                view is still looking at home */}
+            {homePoint && (
+              <g transform={`translate(${homePoint.x.toFixed(1)} ${homePoint.y.toFixed(1)})`}>
+                <circle r={26} fill="none" stroke="#c9ff4a" strokeOpacity={0.35} strokeWidth={1} />
+                <circle r={5} fill="#c9ff4a" />
+                <text y={44} textAnchor="middle" fill="#c9ff4a" fontSize={12} fontFamily="monospace">
+                  you · {home}
+                </text>
+              </g>
+            )}
           </svg>
-        </div>
+
+          {/* the hovered university, as HTML so it can wrap and use the page's type */}
+          {shown && shownDetail && (
+            <div
+              className="pointer-events-none absolute z-10 w-max max-w-[15rem] -translate-x-1/2 -translate-y-full rounded-lg border border-lime/40 bg-ink/95 px-3 py-2 text-xs shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
+              style={{
+                left: `${(shown.end.x / VB) * 100}%`,
+                top: `${(shown.end.y / VB) * 100}%`,
+                marginTop: -18,
+              }}
+            >
+              <span className="font-bold text-paper">{shown.name}</span>
+              <span className="mt-0.5 block text-dim">
+                {shownDetail.country}
+                {shownDetail.rank ? ` · QS #${shownDetail.rank}` : ""}
+              </span>
+            </div>
+          )}
+          </div>
+        </>
+      )}
+
+      {/* The legend. A globe of logos is pretty but unreadable on its own — this is the
+          same list in words, and hovering either highlights the other. */}
+      {homeCoords && targets.length > 0 && (
+        <ul className="mx-auto mt-8 grid max-w-[820px] gap-2 sm:grid-cols-2">
+          {targets.map((t) => (
+            <li key={t.slug}>
+              <button
+                type="button"
+                onClick={() => setView(t.name)}
+                title={`turn the globe to ${t.name}`}
+                onPointerEnter={() => setActive(t.name)}
+                onPointerLeave={() => setActive(null)}
+                onFocus={() => setActive(t.name)}
+                onBlur={() => setActive(null)}
+                className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                  active === t.name ? "border-lime/60 bg-lime/5" : "border-line hover:border-line2"
+                }`}
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white">
+                  {t.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={t.logo} alt="" className="h-6 w-6 object-contain" />
+                  ) : (
+                    <span className="font-mono text-xs font-bold text-ink">{t.mark}</span>
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-paper">{t.name}</span>
+                  <span className="block text-xs text-dim">
+                    {t.country}
+                    {t.rank ? ` · QS #${t.rank}` : ""}
+                    {behind.has(t.name) && <span className="text-amber"> · far side</span>}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       {homeCoords && routes.length > 0 && (
         <p className="mt-6 text-xs leading-relaxed text-dim">
-          One arc per country, so six British universities draw one line rather than six. Markers are the
-          university&rsquo;s initials, not its logo — those are third-party trademarks. Where you are is kept
-          in this browser only for now.{" "}
+          One arc per university, so six British universities draw six lines from you.{" "}
+          {withLogo > 0
+            ? `${withLogo} of ${routes.length} carry the institution's own mark, used only to identify it; the rest fall back to initials.`
+            : "Markers are the university's initials — the marks themselves are third-party trademarks."}{" "}
+          Where you are is kept in this browser only for now.{" "}
           {reduce ? "Motion is off in your system settings, so the arcs are drawn without the travelling signal." : ""}
         </p>
       )}
