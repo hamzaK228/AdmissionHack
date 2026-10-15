@@ -300,8 +300,20 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
   const [openData, setOpenData] = useState<SyncPayload | null>(null);
   const [docs, setDocs] = useState<CloudFile[]>([]);
   const [reports, setReports] = useState<CloudReport[]>([]);
+  /**
+   * Whether the roster is still being fetched.
+   *
+   * Without this the panel claimed "nobody has accepted yet" for the several seconds the
+   * two queries take — telling a parent they have no child sharing with them, and a
+   * counselor they have no students, when both do. An empty state is a statement of fact;
+   * it must not be shown while the answer is still unknown.
+   */
+  const [loadingRoster, setLoadingRoster] = useState(true);
 
-  const refresh = useCallback(async () => setStudents(await listLinkedStudents()), []);
+  const refresh = useCallback(async () => {
+    setStudents(await listLinkedStudents());
+    setLoadingRoster(false);
+  }, []);
 
   /** One student's workspace: the synced summary, plus their folders and files. */
   const openStudent = useCallback(async (studentId: string) => {
@@ -378,7 +390,13 @@ function RosterView({ mode }: { mode: "counselor" | "parent" }) {
 
         <Eyebrow>{mode === "parent" ? "sharing with me" : "my students"}</Eyebrow>
         <ul className="mt-4 space-y-2">
-          {students.length === 0 && (
+          {loadingRoster && students.length === 0 && (
+            <li className="rounded-xl border border-dashed border-line2 p-5 text-sm text-dim">
+              <span className="anim-blink text-lime">▌</span>{" "}
+              {mode === "parent" ? "checking who is sharing with you…" : "checking your students…"}
+            </li>
+          )}
+          {!loadingRoster && students.length === 0 && (
             <li className="rounded-xl border border-dashed border-line2 p-5 text-sm text-fog">
               {mode === "parent"
                 ? "nobody has accepted yet — send the request above and your child will see it when they sign in."
