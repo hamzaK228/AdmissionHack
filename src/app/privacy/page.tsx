@@ -49,11 +49,11 @@ export default function PrivacyPage() {
 
         <H>1. Who we are</H>
         <P>
-          The service is operated by <strong className="text-paper">[LEGAL ENTITY NAME]</strong>, registered
+          The service is operated by <strong className="text-paper">Hamza Kozubaev</strong>, registered
           at <strong className="text-paper">[REGISTERED ADDRESS]</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;).
           We are the controller of the personal information described here. For any question or request about
           your information, write to{" "}
-          <strong className="text-paper">[CONTACT EMAIL]</strong>.
+          <strong className="text-paper">sathack.community@gmail.com</strong>.
         </P>
 
         <H>2. What we collect</H>
@@ -223,7 +223,7 @@ export default function PrivacyPage() {
           it, to delete it, to receive it in a portable form, to object to or restrict certain processing,
           and to withdraw consent you have given (for example by revoking a counselor). Most of this you can
           do yourself from the dashboard, which is the point of building it that way. For anything you cannot
-          do from the interface, write to <strong className="text-paper">[CONTACT EMAIL]</strong> and we will
+          do from the interface, write to <strong className="text-paper">sathack.community@gmail.com</strong> and we will
           respond within the period the law allows. You also have the right to complain to your local data
           protection authority.
         </P>
@@ -238,10 +238,14 @@ export default function PrivacyPage() {
           We do not knowingly collect information from children under 13 at all.
         </P>
         <P>
-          <em className="text-dim">
-            [If you operate in a jurisdiction with a specific digital age of consent, name it and the
-            parental-consent mechanism here.]
-          </em>
+          This service is used by secondary-school students as well as university applicants, so a number of
+          our users are minors. That is why an account asks for nothing beyond an email address, why the
+          service carries no advertising and no analytics, and why everything it holds can be deleted from
+          the dashboard in one action. We do not knowingly collect information from a child under 13. If you
+          are below the age at which your country lets you consent to online services on your own, please use
+          the service with a parent or guardian&rsquo;s permission &mdash; and if you are a parent reading
+          this, that sentence is the whole of our position: we ask nothing of your child that we would not
+          ask of an adult.
         </P>
 
         <H>12. How we protect it</H>
@@ -261,7 +265,7 @@ export default function PrivacyPage() {
 
         <H>14. Contact</H>
         <P>
-          <strong className="text-paper">[CONTACT EMAIL]</strong> · [LEGAL ENTITY NAME], [REGISTERED ADDRESS].
+          <strong className="text-paper">sathack.community@gmail.com</strong> · Hamza Kozubaev, [REGISTERED ADDRESS].
         </P>
 
         <p className="mt-12 text-xs leading-relaxed text-dim">

@@ -34,9 +34,9 @@ export default function TermsPage() {
         <H>1. These terms</H>
         <P>
           By using this service you agree to these terms. If you do not agree with them, please do not use
-          the service. The service is operated by <strong className="text-paper">[LEGAL ENTITY NAME]</strong>
+          the service. The service is operated by <strong className="text-paper">Hamza Kozubaev</strong>
           , <strong className="text-paper">[REGISTERED ADDRESS]</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;),
-          and can be reached at <strong className="text-paper">[CONTACT EMAIL]</strong>. Our handling of your
+          and can be reached at <strong className="text-paper">sathack.community@gmail.com</strong>. Our handling of your
           information is described separately in the{" "}
           <Link href="/privacy" className="font-bold text-lime/80 hover:text-lime">
             Privacy Policy
@@ -199,8 +199,8 @@ export default function TermsPage() {
           To the fullest extent the law allows, we are not liable for indirect or consequential losses, for
           lost opportunities, or for decisions taken on approximate information. Where liability cannot be
           excluded, our total responsibility to you is limited to{" "}
-          <strong className="text-paper">[CURRENCY AND AMOUNT — or state that the service being free, the
-          limit is nil]</strong>. Nothing here excludes liability that the law does not permit to be
+          <strong className="text-paper">nothing at all &mdash; the service is free to students and no fee
+          of any kind is charged for it</strong>. Nothing here excludes liability that the law does not permit to be
           excluded.
         </P>
 
@@ -213,9 +213,9 @@ export default function TermsPage() {
 
         <H>14. Governing law</H>
         <P>
-          These terms are governed by the laws of <strong className="text-paper">[JURISDICTION]</strong>, and
-          disputes will be heard by the courts of{" "}
-          <strong className="text-paper">[JURISDICTION / CITY]</strong>. If you are a consumer, this does not
+          These terms are governed by the laws of <strong className="text-paper">Kyrgyzstan</strong>, and
+          disputes will be heard by the courts of 
+          <strong className="text-paper">Bishkek, Kyrgyzstan</strong>. If you are a consumer, this does not
           remove protections you have under the law of the country where you live.
         </P>
 
@@ -228,7 +228,7 @@ export default function TermsPage() {
 
         <H>16. Contact</H>
         <P>
-          <strong className="text-paper">[CONTACT EMAIL]</strong> · [LEGAL ENTITY NAME], [REGISTERED ADDRESS].
+          <strong className="text-paper">sathack.community@gmail.com</strong> · Hamza Kozubaev, [REGISTERED ADDRESS].
         </P>
 
         <Note>
