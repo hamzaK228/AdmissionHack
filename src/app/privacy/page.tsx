@@ -50,7 +50,7 @@ export default function PrivacyPage() {
         <H>1. Who we are</H>
         <P>
           The service is operated by <strong className="text-paper">Hamza Kozubaev</strong>, registered
-          at <strong className="text-paper">[REGISTERED ADDRESS]</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;).
+          at <strong className="text-paper">Termechikova 51, Lenin district, Bishkek, Kyrgyzstan</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;).
           We are the controller of the personal information described here. For any question or request about
           your information, write to{" "}
           <strong className="text-paper">sathack.community@gmail.com</strong>.
@@ -265,7 +265,7 @@ export default function PrivacyPage() {
 
         <H>14. Contact</H>
         <P>
-          <strong className="text-paper">sathack.community@gmail.com</strong> · Hamza Kozubaev, [REGISTERED ADDRESS].
+          <strong className="text-paper">sathack.community@gmail.com</strong> · Hamza Kozubaev, Termechikova 51, Lenin district, Bishkek, Kyrgyzstan.
         </P>
 
         <p className="mt-12 text-xs leading-relaxed text-dim">

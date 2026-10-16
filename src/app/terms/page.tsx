@@ -35,7 +35,7 @@ export default function TermsPage() {
         <P>
           By using this service you agree to these terms. If you do not agree with them, please do not use
           the service. The service is operated by <strong className="text-paper">Hamza Kozubaev</strong>
-          , <strong className="text-paper">[REGISTERED ADDRESS]</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;),
+          , <strong className="text-paper">Termechikova 51, Lenin district, Bishkek, Kyrgyzstan</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;),
           and can be reached at <strong className="text-paper">sathack.community@gmail.com</strong>. Our handling of your
           information is described separately in the{" "}
           <Link href="/privacy" className="font-bold text-lime/80 hover:text-lime">
@@ -228,7 +228,7 @@ export default function TermsPage() {
 
         <H>16. Contact</H>
         <P>
-          <strong className="text-paper">sathack.community@gmail.com</strong> · Hamza Kozubaev, [REGISTERED ADDRESS].
+          <strong className="text-paper">sathack.community@gmail.com</strong> · Hamza Kozubaev, Termechikova 51, Lenin district, Bishkek, Kyrgyzstan.
         </P>
 
         <Note>
