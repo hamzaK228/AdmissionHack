@@ -9,6 +9,10 @@
   Supabase → Authentication → Emails → Templates → "Confirm signup".
   Paste this whole file into that field.
 
+  STYLE matches the SAThack mail exactly (same tokens: page #0a0f0a, card
+  #101814, border #27322b, lime #bef264, mono type, 3px lime top edge, the
+  block cursor after the wordmark). Only two things differ, both on purpose:
+
   TWO RULES, and breaking either one breaks one of the two products:
 
   1. The CTA must link to `{{ .RedirectTo }}?token_hash=…` and NOT to a domain.
@@ -17,53 +21,58 @@
      wrong site. `{{ .RedirectTo }}` is whatever each app passed as its redirect,
      so each product's mail lands on its own domain.
   2. The brand must come from `{{ .Data.product }}`, which each app sends in its
-     signup metadata, for the same reason.
+     signup metadata, for the same reason. (SAThack does NOT send it yet — its
+     mail will render a blank brand until it does.)
 
   The token_hash form is deliberate: the token is verified by the app's own
   /auth/confirm page, so the link works on any device — sign up on a laptop, open
   the mail on a phone, and the phone ends up signed in.
+
+  Expiry: Supabase's email OTP default is 1 hour (and 24h is the maximum it will
+  accept). If you raise "Email OTP Expiration" in the dashboard, change the two
+  "1 hour" mentions below to match.
 -->
-<body style="margin:0;padding:0;background-color:#060a06;font-family:'Courier New',ui-monospace,Menlo,monospace;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#060a06" style="background-color:#060a06;padding:32px 12px;">
+<body style="margin:0;padding:0;background-color:#0a0f0a;font-family:'Courier New',ui-monospace,Menlo,monospace;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#0a0f0a" style="background-color:#0a0f0a;padding:32px 12px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#0b110b" style="max-width:520px;background-color:#0b110b;border:1px solid #1c2b1a;border-radius:14px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#101814" style="max-width:520px;background-color:#101814;border:1px solid #27322b;border-radius:14px;overflow:hidden;">
           <!-- lime edge -->
-          <tr><td style="height:3px;background-color:#c9ff4a;line-height:3px;font-size:0;">&nbsp;</td></tr>
+          <tr><td style="height:3px;background-color:#bef264;line-height:3px;font-size:0;">&nbsp;</td></tr>
           <tr>
-            <td style="padding:22px 28px;border-bottom:1px solid #1c2b1a;">
-              <span style="color:#c9ff4a;font-weight:bold;font-size:18px;letter-spacing:-0.5px;">&gt;AdmissionHack</span><span style="display:inline-block;width:9px;height:16px;background:#c9ff4a;margin-left:3px;vertical-align:-2px;"></span>
+            <td style="padding:22px 28px;border-bottom:1px solid #27322b;">
+              <span style="color:#bef264;font-weight:bold;font-size:18px;letter-spacing:-0.5px;">&gt;{{ .Data.product }}</span><span style="display:inline-block;width:9px;height:16px;background:#bef264;margin-left:3px;vertical-align:-2px;"></span>
             </td>
           </tr>
           <tr>
             <td style="padding:32px 28px;">
-              <p style="margin:0 0 8px;color:#c9ff4a;font-size:12px;letter-spacing:2px;text-transform:uppercase;">&gt; confirm your email</p>
-              <h1 style="margin:0 0 16px;color:#e7f2e3;font-size:23px;line-height:1.25;font-weight:bold;">One click and your workspace is yours.</h1>
-              <p style="margin:0 0 26px;color:#93a891;font-size:14px;line-height:1.65;">
-                Welcome to {{ .Data.product }} — confirm <span style="color:#e7f2e3;font-weight:bold;">{{ .Email }}</span> and your
+              <p style="margin:0 0 8px;color:#bef264;font-size:12px;letter-spacing:2px;text-transform:uppercase;">&gt; confirm your email</p>
+              <h1 style="margin:0 0 16px;color:#f2f7f2;font-size:23px;line-height:1.25;font-weight:bold;">One click and your workspace is yours.</h1>
+              <p style="margin:0 0 26px;color:#a5b2aa;font-size:14px;line-height:1.65;">
+                Welcome to {{ .Data.product }} — confirm <span style="color:#f2f7f2;font-weight:bold;">{{ .Email }}</span> and your
                 university lists, documents, deadlines and scores follow you to any device.
                 <br><br>
-                <span style="color:#7d9179;">Works on any device — sign up on a laptop, tap the link on your phone, and you&rsquo;ll be signed in.</span>
+                <span style="color:#77867d;">Works on any device — sign up on a laptop, tap the link on your phone, and you&rsquo;ll be signed in.</span>
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                  <td align="center" bgcolor="#c9ff4a" style="background-color:#c9ff4a;border-radius:10px;">
-                    <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/dashboard" style="display:block;padding:15px 28px;color:#060a06;font-weight:bold;font-size:15px;text-decoration:none;">Confirm my email&nbsp;&rarr;</a>
+                  <td align="center" bgcolor="#bef264" style="background-color:#bef264;border-radius:10px;">
+                    <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/dashboard" style="display:block;padding:15px 28px;color:#101814;font-weight:bold;font-size:15px;text-decoration:none;">Confirm my email&nbsp;&rarr;</a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:26px 0 0;color:#7d9179;font-size:12px;line-height:1.7;">
-                The link works once and expires in 24 hours. If you didn&rsquo;t create an account, ignore this email — nothing else happens.
+              <p style="margin:26px 0 0;color:#77867d;font-size:12px;line-height:1.7;">
+                The link works once and expires in 1 hour. If you didn&rsquo;t create an account, ignore this email — nothing else happens.
                 <br><br>
                 Can&rsquo;t see the button? Paste this into your browser:
                 <br>
-                <span style="color:#c9ff4a;word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/dashboard</span>
+                <span style="color:#bef264;word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/dashboard</span>
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:18px 28px;border-top:1px solid #1c2b1a;">
-              <p style="margin:0;color:#5f755d;font-size:11px;line-height:1.6;">
+            <td style="padding:18px 28px;border-top:1px solid #27322b;">
+              <p style="margin:0;color:#5d6b60;font-size:11px;line-height:1.6;">
                 Free for students. No advertising, no data selling, and the rankings are re-published for reference &mdash; always verify requirements on the university&rsquo;s own site.
               </p>
             </td>

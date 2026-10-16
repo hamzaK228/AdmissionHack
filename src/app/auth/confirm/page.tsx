@@ -118,7 +118,7 @@ export default function ConfirmEmailPage() {
           <>
             <Eyebrow>that link did not work</Eyebrow>
             <p className="mt-3 text-sm leading-relaxed text-fog">
-              Links work once and expire after 24 hours. Ask for a fresh one and use the newest email
+              Links work once and expire within an hour. Ask for a fresh one and use the newest email
               — an older link in the same inbox will fail even though it looks identical.
             </p>
             {detail && <p className="mt-2 text-xs text-dim">{detail}</p>}
