@@ -146,7 +146,7 @@ export function useAuth() {
          * signed up on. SAThack's signup should send its own name in the same field.
          */
         data: { role, full_name: fullName, product: "AdmissionHack" },
-        emailRedirectTo: typeof location !== "undefined" ? `${location.origin}/dashboard` : undefined,
+        emailRedirectTo: typeof location !== "undefined" ? `${location.origin}/auth/confirm` : undefined,
       },
     });
     if (error) {
@@ -235,18 +235,28 @@ export function useAuth() {
       type: "signup",
       email,
       options: {
-        emailRedirectTo: typeof location !== "undefined" ? `${location.origin}/dashboard` : undefined,
+        emailRedirectTo: typeof location !== "undefined" ? `${location.origin}/auth/confirm` : undefined,
       },
     });
     return error ? { ok: false, error: error.message } : { ok: true };
   };
 
-  /** Email a password-reset link. The link returns to /auth/reset with a session. */
+  /**
+   * Email a password-reset link, which returns to `/auth/confirm`.
+   *
+   * Both emailed links point at one page rather than at their destinations, and the reason is the
+   * email template: AdmissionHack and SAThack share a Supabase project, so they share ONE template,
+   * and a template cannot hardcode either product's domain without sending the other product's
+   * students to the wrong site — which is exactly what the old template did. The template links to
+   * `{{ .RedirectTo }}`, which is whatever each app passes here, so each product's mail lands on its
+   * own domain. `/auth/confirm` then verifies the token and routes on: the workspace for a signup,
+   * the reset page for a recovery.
+   */
   const requestPasswordReset = async (email: string): Promise<AuthResult> => {
     const sb = supabase();
     if (!sb) return { ok: false, error: "backend not configured" };
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: typeof location !== "undefined" ? `${location.origin}/auth/reset` : undefined,
+      redirectTo: typeof location !== "undefined" ? `${location.origin}/auth/confirm` : undefined,
     });
     return error ? { ok: false, error: error.message } : { ok: true };
   };
