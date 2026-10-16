@@ -3,10 +3,13 @@
 Everything that needs **your** hands, in the order it has to happen, with the exact clicks and a way to
 check each one worked. Steps 1–6 gate the launch; the rest can go in any order.
 
-> **Status as of 15 October 2026.** Custom SMTP is configured and **verified working** — a recovery email
-> sent through your auth API returned 200, which it does not do if the credentials are wrong. The AI key
-> works locally but has not been confirmed on the deployment. Signup has still never been walked by a real
-> person from a real inbox. These three sentences are the whole launch situation.
+> **Status as of 16 October 2026.** Custom SMTP is configured and **verified working** — a recovery email
+> sent through the auth API returned 200, which it does not do when the credentials are wrong. `AI_API_KEY`
+> **is already set on Production**, so what remains there is a *test*, not a setup. The production branch is
+> `main` and `admissionhack-seven.vercel.app` is assigned to Production, so the deploy pipeline is correct —
+> the "No Production Deployment" text on the project card contradicts those settings and is a dashboard
+> artifact, not a fault. What has never happened is a **real person walking signup from a real inbox**, and
+> that is now the first item.
 
 Legend: **[you]** your hands or a decision · **[me]** I build it · **[you + me]** decision first, then code.
 
@@ -34,28 +37,26 @@ deliverability problem in step 3, and it is not a bug in the app.
 
 ---
 
-### 2. Put the AI key on the deployment ⏱ 5 min · **[you]** · *highest value per minute*
+### 2. Test the AI reviewer on the live site ⏱ 2 min · **[you]** · *the key is already there*
 
-Local `.env.local` has the key; the deployment may not, and the code defaults will not help because there
-is nothing to default to.
+`AI_API_KEY` is set for **Production** — added 16 Oct. Nothing to add. What is unknown is whether the
+**value** works, so test it rather than trusting it:
 
-1. Vercel → your project → **Settings → Environment Variables**.
-2. Add these three, ticking **Production** and **Preview** for each:
+1. Live site → sign in → **writing ✍** tab → paste a paragraph → run a review.
+2. Same on the **overview** tab for the AI advisor.
+3. **If you get feedback, this item is closed.**
 
-   | name | value |
-   |---|---|
-   | `AI_API_KEY` | your DeepSeek key (`sk-…`) |
-   | `AI_API_BASE_URL` | `https://api.deepseek.com` |
-   | `AI_MODEL` | `deepseek-chat` |
+`AI_API_BASE_URL` and `AI_MODEL` are deliberately unset — the code defaults to `https://api.deepseek.com`
+and `deepseek-chat`, so leaving them out is correct, not a gap.
 
-3. **Redeploy.** Deployments → the newest → **⋯ → Redeploy**. This is not optional: Vercel does not give
-   new variables to an already-built deployment.
-4. Test on the live site: sign in → **writing ✍** tab → paste a paragraph → run a review. You should get
-   feedback, not an error.
-5. Same for the AI advisor on the **overview** tab.
+**If it fails, it is one of two things:**
+- the stored value is the **old Zhipu key** rather than the DeepSeek one — replace it and **redeploy**
+  (Vercel does not hand a changed variable to a build that already happened);
+- the DeepSeek account has **no credit**, which surfaces as a *quota* error rather than an auth error, so
+  it reads like a rate limit. Top up, wait a minute, retry.
 
-**If it says the reviewer is not configured:** the variable did not reach the build — redeploy again.
-**If it says quota:** the key is fine but the DeepSeek account has no credit.
+**Note:** those variables are **Production-only**, so a *preview* deployment has no AI key. That only matters
+if you test a preview URL instead of the real domain — the real domain is production, so it is fine.
 
 ---
 
@@ -141,9 +142,11 @@ worth checking their terms before this gets traffic.
 
 ---
 
-## Phase 1 — the domain, and the mailer done properly
+## Phase 1 — a domain you own, and the mailer done properly
 
-Do these two together; the second needs the first.
+Nothing here is broken. This phase is about replacing `admissionhack-seven.vercel.app` with something a
+school can put on a poster, and about getting mail out of a Gmail account. Do them together; the second
+needs the first.
 
 ### 7. Buy the domain and point it at Vercel ⏱ 30 min · **[you]**
 
@@ -154,7 +157,7 @@ Do these two together; the second needs the first.
    host until you do.
 4. **Verify:** open `https://yourdomain/sitemap.xml` and check the `<loc>` lines use the new host.
 
-### 8. Add the domain to the redirect allowlist ⏱ 5 min · **[you]** · *skipping this breaks signup*
+### 8. Add the new domain to the redirect allowlist ⏱ 5 min · **[you]** · *skipping this breaks signup*
 
 The login flow builds its redirect from `location.origin`, and GoTrue **silently** falls back to the
 default Site URL if the origin is not allowed — so the confirmation link lands somewhere that cannot finish
